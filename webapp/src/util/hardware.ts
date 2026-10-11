@@ -37,3 +37,29 @@ export class WakeLockHolder {
     }
   }
 }
+
+/** Android: lock portrait for the weld loop (plan section 7). Best effort --
+ * iOS Safari and desktop reject or ignore it. */
+export async function lockPortrait(): Promise<void> {
+  try {
+    const o = screen.orientation as ScreenOrientation & {
+      lock?: (o: string) => Promise<void>;
+    };
+    await o?.lock?.('portrait');
+  } catch {
+    // unsupported / denied -- the app still works, rotation compensation kicks in
+  }
+}
+
+/** OS-reported content rotation (0/90/180/270). Feeds effectiveDeg() to
+ * compensate the user frame where the portrait lock above fails (iOS). */
+export function screenAngleDeg(): number {
+  try {
+    if (screen.orientation && typeof screen.orientation.angle === 'number') {
+      return screen.orientation.angle;
+    }
+  } catch {
+    // fall through
+  }
+  return (window as unknown as { orientation?: number }).orientation ?? 0;
+}

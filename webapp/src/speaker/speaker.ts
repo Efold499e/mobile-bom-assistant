@@ -5,6 +5,7 @@
 // - if TTS is unavailable at all: WebAudio beep + vibration fallback, flow goes on
 
 import { WebAudioBeep } from './beep';
+import { recordSay } from '../util/testhooks';
 
 export interface SpeakerOptions {
   rate?: number;
@@ -18,7 +19,7 @@ export class Speaker {
   private lang: string;
   private voices: SpeechSynthesisVoice[] = [];
   private voicesReady = false;
-  private beep: WebAudioBeep;
+  private beeper: WebAudioBeep;
   private onFallback?: () => void;
 
   constructor(synth: SpeechSynthesis | null = defaultSynth(), opts: SpeakerOptions = {}) {
@@ -26,7 +27,7 @@ export class Speaker {
     this.rate = opts.rate ?? 0.9;
     this.lang = opts.lang ?? 'zh-CN';
     this.onFallback = opts.onFallback;
-    this.beep = new WebAudioBeep();
+    this.beeper = new WebAudioBeep();
     if (this.synth) {
       this.loadVoices();
       this.synth.addEventListener?.('voiceschanged', () => this.loadVoices());
@@ -69,6 +70,7 @@ export class Speaker {
 
   /** Announce text immediately; cancels any queued speech first. */
   say(text: string) {
+    recordSay(text);
     if (!this.synth) {
       this.fallback();
       return;
@@ -86,8 +88,13 @@ export class Speaker {
     }
   }
 
+  /** Short feedback blip (batch mode piece confirmation, plan section 9). */
+  blip() {
+    this.beeper.play(1250, 70); // play() records the beep-count seam
+  }
+
   private fallback() {
-    this.beep.play();
+    this.beeper.play();
     this.onFallback?.();
   }
 

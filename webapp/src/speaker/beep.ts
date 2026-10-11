@@ -1,5 +1,7 @@
 // WebAudio beep: the no-TTS fallback channel (plan section 6).
 
+import { recordBeep } from '../util/testhooks';
+
 export class WebAudioBeep {
   private ctx: AudioContext | null = null;
 
@@ -13,6 +15,7 @@ export class WebAudioBeep {
   }
 
   play(freq = 880, durationMs = 120) {
+    recordBeep();
     const ctx = this.ensureCtx();
     if (!ctx) return;
     const osc = ctx.createOscillator();

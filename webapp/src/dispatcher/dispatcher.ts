@@ -16,12 +16,16 @@ export interface DispatcherHooks {
   finish(event: Extract<RunnerEvent, { type: 'finished' }>): void;
   vibrate(pattern: number | number[]): void;
   persist(state: RunnerState): void;
+  /** Observer for every raw event (M3: completed/skipped feed batch-mode
+   * blips/milestones in the UI layer -- no new command semantics). */
+  onEvent?(ev: RunnerEvent): void;
 }
 
 export function dispatch(hooks: DispatcherHooks, cmd: Command, now: number = Date.now()): void {
   const { state, events } = hooks.apply(cmd, now);
 
   for (const ev of events) {
+    hooks.onEvent?.(ev);
     switch (ev.type) {
       case 'unit':
         hooks.announce(state, ev);

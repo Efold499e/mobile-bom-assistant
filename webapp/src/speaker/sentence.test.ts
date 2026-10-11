@@ -2,7 +2,18 @@
 // speechSynthesis (cancel-before-speak, rate, fallback path).
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { finishSentence, sideWord, speakFootprint, speakValue, unitSentence } from './sentence';
+import {
+  askBatchSentence,
+  batchMilestoneSentence,
+  finishSentence,
+  groupIntroSentence,
+  locationCardText,
+  locationPhrase,
+  sideWord,
+  speakFootprint,
+  speakValue,
+  unitSentence,
+} from './sentence';
 import { Speaker } from './speaker';
 import type { StjGroup, StjTask } from '../loader/types';
 
@@ -41,6 +52,53 @@ describe('sentence composition', () => {
   it('side word', () => {
     expect(sideWord('top')).toBe('正面');
     expect(sideWord('bottom')).toBe('背面');
+  });
+});
+
+// A demo-shaped task for location phrases (45x32 board, two landmarks).
+const task = {
+  meta: {
+    board: { width_mm: 45, height_mm: 32 },
+    landmarks: [
+      { ref: 'J1', speak: 'Type-C 座', x_mm: 2.5, y_mm: 16 },
+      { ref: 'J2', speak: '电源端子', x_mm: 42.5, y_mm: 8 },
+    ],
+  },
+} as unknown as StjTask;
+
+describe('location phrases (plan section 6/7)', () => {
+  it('uncalibrated -> null (宁可少说，不说错的)', () => {
+    expect(locationPhrase(12, 6, task, 'none', null)).toBeNull();
+    expect(locationCardText(12, 6, task, 'none', null)).toBeNull();
+  });
+  it('calibrated top face: nine-grid word + nearest landmark', () => {
+    // (12,6) on 45x32: left/top third; nearest landmark J1
+    expect(locationPhrase(12, 6, task, 'none', 0)).toBe('板子左上，靠Type-C 座');
+    expect(locationCardText(12, 6, task, 'none', 0)).toBe('板子左上 · 靠Type-C 座');
+  });
+  it('rotates the word with the calibration angle', () => {
+    expect(locationPhrase(12, 6, task, 'none', 90)).toBe('板子右上，靠Type-C 座');
+    expect(locationPhrase(12, 6, task, 'none', 180)).toBe('板子右下，靠Type-C 座');
+  });
+  it('no landmark nearby sentence half when task has none', () => {
+    const bare = { meta: { board: task.meta.board, landmarks: [] } } as unknown as StjTask;
+    expect(locationPhrase(12, 6, bare, 'none', 0)).toBe('板子左上');
+  });
+});
+
+describe('batch sentences (plan section 6)', () => {
+  it('group intro when entering a batch group', () => {
+    expect(groupIntroSentence(g0, 10)).toBe('下一组，10 颗 10千欧，位置都亮出来了，一起焊。');
+  });
+  it('ask dialog text', () => {
+    expect(askBatchSentence(g0, 4)).toBe('4 颗 10千欧，一起焊？');
+  });
+  it('milestones fire only at remaining 3 and 1', () => {
+    expect(batchMilestoneSentence(3)).toBe('这组还剩 3 颗。');
+    expect(batchMilestoneSentence(1)).toBe('这组还剩最后 1 颗。');
+    expect(batchMilestoneSentence(10)).toBeNull();
+    expect(batchMilestoneSentence(2)).toBeNull();
+    expect(batchMilestoneSentence(0)).toBeNull();
   });
 });
 

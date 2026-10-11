@@ -11,12 +11,33 @@ const DB_NAME = 'solder-assistant';
 const DB_VERSION = 1;
 const STORE = 'tasks';
 
+/** Orientation calibration (plan section 7), persisted per task so a second
+ * session skips the calibration step. M3 sets deg only; flip arrives with the
+ * M4 face-turn flow (default 'lr'). Incremental record fields only. */
+export interface CalibInfo {
+  deg: number;
+  flip: 'lr' | 'tb';
+  at: number;
+}
+
+/** App settings (M4): TTS rate 0.7-1.2 (default 0.9), batch threshold
+ * (default 4, null = batch off). */
+export interface TaskSettings {
+  rate: number;
+  batchThreshold: number | null;
+}
+
 export interface TaskRecord {
   taskId: string;
   name: string;
   builtin: boolean;
   task: StjTask; // validated STJ (original JSON round-trips through export)
   run: RunnerSnapshot | null;
+  calib?: CalibInfo;
+  /** M4: user pick order from the menu screen (报菜名点选序), as gids;
+   * absent -> fall back to task.group_order_default. */
+  pickOrder?: string[];
+  settings?: TaskSettings;
   savedAt: number;
 }
 
@@ -103,16 +124,44 @@ export async function deleteTask(taskId: string): Promise<void> {
 
 /** Reset welding progress (keep the imported task). */
 export async function resetRun(taskId: string): Promise<void> {
-  const rec = await getTask(taskId);
-  if (!rec) return;
-  rec.run = null;
-  await putTask(rec);
+  await enqueue(async () => {
+    const rec = await getTask(taskId);
+    if (!rec) return;
+    rec.run = null;
+    await putTask(rec);
+  });
 }
 
 /** Persist the runner snapshot atomically after each operation. */
 export async function persistRun(taskId: string, state: RunnerState): Promise<void> {
-  const rec = await getTask(taskId);
-  if (!rec) return;
-  rec.run = snapshotOf(state);
-  await putTask(rec);
+  await enqueue(async () => {
+    const rec = await getTask(taskId);
+    if (!rec) return;
+    rec.run = snapshotOf(state);
+    await putTask(rec);
+  });
+}
+
+/** Persist the orientation calibration for a task. */
+export async function persistCalib(taskId: string, calib: CalibInfo): Promise<void> {
+  await enqueue(async () => {
+    const rec = await getTask(taskId);
+    if (!rec) return;
+    rec.calib = calib;
+    await putTask(rec);
+  });
+}
+
+/** Serialize read-modify-write cycles: locking the calibration fires while the
+ * first start dispatch persists its snapshot; two interleaved get->put pairs
+ * clobber each other (last writer wins with a stale record), so every
+ * read-modify-write runs on one queue. */
+let writeChain: Promise<void> = Promise.resolve();
+function enqueue<T>(job: () => Promise<T>): Promise<T> {
+  const p = writeChain.then(job);
+  writeChain = p.then(
+    () => undefined,
+    () => undefined,
+  );
+  return p;
 }

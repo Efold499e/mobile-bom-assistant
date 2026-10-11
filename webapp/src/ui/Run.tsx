@@ -1,28 +1,39 @@
 // Run screen: the product's heart (plan sections 2 + 5).
-// Fixed layout: big card area on top, exactly three buttons below
-// (上一个 1fr / 重新播报 1fr / 完成 2fr). Gestures: card tap = replay,
-// card swipe-up = skip, prev button short-press = step back (rework),
-// long-press 600ms (double-pulse confirm) = undo mistaken completion.
+// Fixed layout: big card area on top (card left 2/3 + map thumbnail right 1/3),
+// exactly three buttons below (上一个 1fr / 重新播报 1fr / 完成 2fr).
+// Gestures: card tap = replay, card swipe-up = skip, thumbnail tap = fullscreen
+// map, prev short-press = step back (rework), long-press 600ms (double-pulse
+// confirm) = undo mistaken completion.
+// M3 adds: orientation calibration before the loop (UI-layer flow, not a
+// dispatcher command), direction words on the card third row, bottom-face
+// mirror view, and batch mode (ask once per group; blip per piece).
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSpeaker, type FinishSummary } from '../app';
 import { dispatch, type DispatcherHooks } from '../dispatcher/dispatcher';
-import { planQueue } from '../planner/snake';
+import { planQueue, type QueueUnit } from '../planner/snake';
+import { BatchTracker, batchCountOf, remainingPendingInGroup } from '../runner/batch';
 import type { RunnerState } from '../runner/runner';
 import { applyCommand, initialRunner, nextPendingIndex } from '../runner/runner';
-import { finishSentence, sideWord, unitSentence } from '../speaker/sentence';
-import { getTask, persistRun } from '../store/db';
+import {
+  askBatchSentence,
+  batchMilestoneSentence,
+  finishSentence,
+  groupIntroSentence,
+  locationCardText,
+  locationPhrase,
+  sideWord,
+  unitSentence,
+} from '../speaker/sentence';
+import { getTask, persistCalib, persistRun } from '../store/db';
 import type { StjTask } from '../loader';
-import { WakeLockHolder, vibrate } from '../util/hardware';
+import type { Side } from '../loader/types';
+import { BoardMap } from '../boardmap/BoardMap';
+import { effectiveDeg, type Flip } from '../boardmap/geo';
+import { CalibrateScreen } from './Calibrate';
+import { WakeLockHolder, lockPortrait, screenAngleDeg, vibrate } from '../util/hardware';
 
 const LONG_PRESS_MS = 600;
-
-interface Unit {
-  pid: number;
-  gid: string;
-  ref: string;
-  side: 'top' | 'bottom';
-}
 
 function summarize(s: RunnerState): FinishSummary {
   let done = 0;
@@ -46,18 +57,34 @@ export function RunScreen(props: {
 }) {
   const [task, setTask] = useState<StjTask | null>(null);
   const [, setTick] = useState(0); // re-render after each dispatch
-  const queue = useRef<Unit[]>([]);
+  const [phase, setPhase] = useState<'loading' | 'calibrate' | 'loop'>('loading');
+  const [calibDeg, setCalibDeg] = useState<number | null>(null);
+  const [calibFlip, setCalibFlip] = useState<'lr' | 'tb'>('lr');
+  const [fullMap, setFullMap] = useState(false);
+  const [followKey, setFollowKey] = useState(0);
+  const [batchAsk, setBatchAsk] = useState<{ gid: string } | null>(null);
+  const [batchGids, setBatchGids] = useState<Set<string>>(new Set());
+
+  const queue = useRef<QueueUnit[]>([]);
   const runnerRef = useRef<RunnerState | null>(null);
   const wakeLock = useRef(new WakeLockHolder());
   const taskRef = useRef<StjTask | null>(null);
+  const placementsById = useRef(new Map<number, { x_mm: number; y_mm: number }>());
+  const startedRef = useRef(false);
+  const batchRef = useRef(new BatchTracker());
+  const pendingAskRef = useRef<string | null>(null);
+  // view info as refs so the memoized dispatcher hooks never read stale state
+  const viewInfoRef = useRef<{ deg: number | null; flip: 'lr' | 'tb' }>({ deg: null, flip: 'lr' });
 
   useEffect(() => {
+    let cancelled = false;
     void (async () => {
       const rec = await getTask(props.taskId);
-      if (!rec) return;
+      if (!rec || cancelled) return;
       const t = rec.task;
       taskRef.current = t;
       setTask(t);
+      placementsById.current = new Map(t.placements.map((p) => [p.pid, p] as const));
       const planned = planQueue(t);
       queue.current = planned;
       const order = planned.map((u) => u.pid);
@@ -75,18 +102,27 @@ export function RunScreen(props: {
       }
       // resume straight into the summary if this task was already finished
       if (rec.run?.finishedAt) {
-        const s = runnerRef.current;
-        props.onFinish(summarize(s));
+        props.onFinish(summarize(runnerRef.current));
         return;
       }
+      if (rec.calib) {
+        // sync the view-info ref before startLoop: the start announcement
+        // dispatches before the re-render and must carry orientation words
+        viewInfoRef.current = { deg: effectiveDeg(rec.calib.deg, screenAngleDeg()), flip: rec.calib.flip };
+        setCalibDeg(rec.calib.deg);
+        setCalibFlip(rec.calib.flip);
+        setPhase('loop');
+        startLoop();
+      } else {
+        setPhase('calibrate');
+      }
       setTick((x) => x + 1);
-      // entering the loop announces the current unit and locks the screen on
-      const wl = wakeLock.current;
-      void wl.acquire();
-      document.addEventListener('visibilitychange', wl.onVisibilityChange);
-      dispatch(hooksRef.current, 'start', Date.now());
     })();
+    const onOri = () => setTick((x) => x + 1); // iOS rotation compensation re-render
+    window.addEventListener('orientationchange', onOri);
     return () => {
+      cancelled = true;
+      window.removeEventListener('orientationchange', onOri);
       wakeLock.current.release();
       document.removeEventListener('visibilitychange', wakeLock.current.onVisibilityChange);
       getSpeaker().dispose();
@@ -94,7 +130,41 @@ export function RunScreen(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.taskId]);
 
+  const startLoop = () => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    const wl = wakeLock.current;
+    void wl.acquire();
+    void lockPortrait(); // Android; iOS falls back to angle compensation
+    document.addEventListener('visibilitychange', wl.onVisibilityChange);
+    dispatch(hooksRef.current, 'start', Date.now());
+  };
+
   const groupOf = (gid: string) => taskRef.current?.groups.find((g) => g.gid === gid);
+
+  // view-frame flip for a unit: only the bottom face is mirrored
+  const flipFor = (side: Side, flip: 'lr' | 'tb'): Flip => (side === 'bottom' ? flip : 'none');
+
+  const speakUnit = (s: RunnerState, pid: number) => {
+    const t = taskRef.current;
+    if (!t) return;
+    const idx = s.order.indexOf(pid);
+    const unit = queue.current[idx];
+    const group = unit && groupOf(unit.gid);
+    if (!group) return;
+    const p = placementsById.current.get(pid);
+    const loc =
+      p && viewInfoRef.current.deg !== null
+        ? (locationPhrase(
+            p.x_mm,
+            p.y_mm,
+            t,
+            flipFor(unit.side, viewInfoRef.current.flip),
+            viewInfoRef.current.deg,
+          ) ?? undefined)
+        : undefined;
+    getSpeaker().say(unitSentence({ index: idx + 1, total: s.order.length, group, loc }));
+  };
 
   const hooks = useMemo<DispatcherHooks>(
     () => ({
@@ -113,7 +183,17 @@ export function RunScreen(props: {
         const unit = queue.current[idx];
         const group = unit && groupOf(unit.gid);
         if (!group) return;
-        getSpeaker().say(unitSentence({ index: idx + 1, total: s.order.length, group }));
+        // batch mode is UI-layer flow on top of the unchanged runner: an
+        // undecided eligible group pops the ask (silently), an active batch
+        // group stays silent (blips come per completion)
+        const tracker = batchRef.current;
+        if (tracker.shouldAsk(group)) {
+          pendingAskRef.current = unit.gid;
+          setBatchAsk({ gid: unit.gid });
+          return;
+        }
+        if (tracker.isBatch(unit.gid)) return;
+        speakUnit(s, ev.pid);
       },
       finish: (ev) => {
         const t = taskRef.current;
@@ -131,6 +211,19 @@ export function RunScreen(props: {
       },
       vibrate: (pattern) => vibrate(pattern),
       persist: (s) => void persistRun(props.taskId, s),
+      onEvent: (ev) => {
+        // batch feedback per completed/skipped piece + 剩3/剩1 milestones
+        if (ev.type !== 'completed' && ev.type !== 'skipped') return;
+        const s = runnerRef.current; // old state: setState runs after the loop
+        if (!s) return;
+        const unit = queue.current.find((u) => u.pid === ev.pid);
+        if (!unit || !batchRef.current.isBatch(unit.gid)) return;
+        getSpeaker().blip();
+        vibrate(30);
+        const rem = remainingPendingInGroup(queue.current, s.statuses, unit.gid) - 1;
+        const milestone = batchMilestoneSentence(rem);
+        if (milestone) getSpeaker().say(milestone);
+      },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [props.taskId],
@@ -139,6 +232,43 @@ export function RunScreen(props: {
   hooksRef.current = hooks;
 
   const doDispatch = (cmd: Parameters<typeof dispatch>[1]) => dispatch(hooks, cmd, Date.now());
+
+  const decideBatch = (accept: boolean) => {
+    const gid = pendingAskRef.current;
+    if (!gid) return;
+    const group = groupOf(gid);
+    pendingAskRef.current = null;
+    setBatchAsk(null);
+    if (!group) return;
+    batchRef.current.decide(group, accept ? 'batch' : 'single');
+    vibrate(30);
+    if (accept) {
+      setBatchGids((prev) => new Set(prev).add(gid));
+      getSpeaker().say(groupIntroSentence(group, group.qty));
+    } else {
+      const s = runnerRef.current;
+      if (s && s.pointer >= 0) speakUnit(s, s.order[s.pointer]);
+    }
+  };
+
+  // keep view-info refs in sync with render state
+  const effCal = calibDeg === null ? null : effectiveDeg(calibDeg, screenAngleDeg());
+  viewInfoRef.current = { deg: effCal, flip: calibFlip };
+
+  const lockCal = (deg: number) => {
+    setCalibDeg(deg);
+    // update the view-info ref synchronously: the replay below dispatches
+    // before the re-render, and the announcement must use the new angle
+    viewInfoRef.current = { deg: effectiveDeg(deg, screenAngleDeg()), flip: calibFlip };
+    void persistCalib(props.taskId, { deg, flip: calibFlip, at: Date.now() });
+    setPhase('loop');
+    if (!startedRef.current) startLoop();
+    else doDispatch('replay'); // re-announce with the new orientation words
+  };
+  const skipCal = () => {
+    setPhase('loop');
+    if (!startedRef.current) startLoop();
+  };
 
   // ---- prev button: short press vs 600ms long press (undo) ----
   const holdTimer = useRef<number | null>(null);
@@ -167,19 +297,18 @@ export function RunScreen(props: {
     armedLong.current = false;
   };
 
-  // ---- card gestures: tap = replay, swipe up = skip ----
-  const touchStart = useRef<{ x: number; y: number; t: number } | null>(null);
-  const onCardTouchStart = (e: TouchEvent) => {
-    const t = e.touches[0];
-    touchStart.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+  // ---- card gestures: tap = replay, swipe up = skip (pointer events so the
+  // same handlers serve touch on the phone and mouse in desktop automation) ----
+  const touchStart = useRef<{ x: number; y: number; t: number; id: number } | null>(null);
+  const onCardPointerDown = (e: PointerEvent) => {
+    touchStart.current = { x: e.clientX, y: e.clientY, t: Date.now(), id: e.pointerId };
   };
-  const onCardTouchEnd = (e: TouchEvent) => {
+  const onCardPointerUp = (e: PointerEvent) => {
     const s = touchStart.current;
     touchStart.current = null;
-    if (!s) return;
-    const t = e.changedTouches[0];
-    const dy = t.clientY - s.y;
-    const dx = t.clientX - s.x;
+    if (!s || s.id !== e.pointerId) return;
+    const dy = e.clientY - s.y;
+    const dx = e.clientX - s.x;
     if (dy < -50 && Math.abs(dx) < 80) {
       doDispatch('skip'); // swipe up: skip
     } else if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && Date.now() - s.t < 500) {
@@ -187,14 +316,44 @@ export function RunScreen(props: {
     }
   };
 
-  if (!task || !runnerRef.current) {
+  if (!task || !runnerRef.current || phase === 'loading') {
     return <div class="screen" />;
   }
+  if (phase === 'calibrate') {
+    return (
+      <CalibrateScreen
+        task={task}
+        initialDeg={calibDeg ?? 0}
+        onLock={lockCal}
+        onSkip={skipCal}
+      />
+    );
+  }
+
   const state = runnerRef.current;
   const total = state.order.length;
   const unit = state.pointer >= 0 ? queue.current[state.pointer] : null;
   const group = unit ? groupOf(unit.gid) : undefined;
+  const placement = unit ? placementsById.current.get(unit.pid) : undefined;
   const doneCount = state.order.filter((pid) => state.statuses[pid] === 'done').length;
+  const viewSide: Side = unit?.side ?? 'top';
+  const batchCount = unit && batchRef.current.isBatch(unit.gid)
+    ? batchCountOf(queue.current, state.pointer)
+    : null;
+  const locCard =
+    placement && effCal !== null && task
+      ? locationCardText(placement.x_mm, placement.y_mm, task, flipFor(unit!.side, calibFlip), effCal)
+      : null;
+
+  const mapCommon = {
+    task,
+    statuses: state.statuses,
+    currentPid: unit?.pid ?? null,
+    viewSide,
+    calibDeg: effCal ?? 0,
+    flip: unit ? flipFor(unit.side, calibFlip) : ('none' as Flip),
+    batchGids,
+  };
 
   return (
     <div class="screen">
@@ -202,9 +361,13 @@ export function RunScreen(props: {
         <span class="idx">
           第 {Math.min(state.pointer + 1, total)}/{total} 颗
         </span>
-        <span>
-          {unit && <span class="badge">{sideWord(unit.side)}</span>}{' '}
+        <span class="run-meta-right">
+          {unit && <span class="badge">{sideWord(unit.side)}</span>}
+          {unit?.side === 'bottom' && <span class="badge">镜像</span>}
           {group?.polarity && <span class="badge warn">⚠极性</span>}
+          <button class="btn-link" data-testid="open-cal" onClick={() => setPhase('calibrate')}>
+            标定
+          </button>
         </span>
       </div>
       <div class="run-progress">
@@ -215,13 +378,24 @@ export function RunScreen(props: {
         <div
           class="run-card"
           data-testid="run-card"
-          onTouchStart={onCardTouchStart}
-          onTouchEnd={onCardTouchEnd}
+          onPointerDown={onCardPointerDown}
+          onPointerUp={onCardPointerUp}
+          onPointerCancel={() => (touchStart.current = null)}
         >
           <div class="value">{group?.value ?? '—'}</div>
           <div class="fp">{group ? (group.footprint_speak ?? group.footprint) : ''}</div>
-          <div class="loc">{/* M1: orientation left blank by design */}</div>
+          <div class="loc" data-testid="card-loc">
+            {locCard ?? (effCal === null ? '未标定方位' : '')}
+          </div>
+          {batchCount && (
+            <div class="batch-n" data-testid="batch-count">
+              本组 第 {batchCount.x}/{batchCount.n} 颗
+            </div>
+          )}
           <div class="hint">点卡片重听 · 上滑跳过</div>
+        </div>
+        <div class="map-thumb-wrap">
+          <BoardMap {...mapCommon} mode="thumb" onTap={() => setFullMap(true)} />
         </div>
       </div>
 
@@ -258,6 +432,49 @@ export function RunScreen(props: {
           完成
         </button>
       </div>
+
+      {batchAsk && (
+        <div class="modal" data-testid="batch-ask">
+          <div class="modal-card">
+            <div class="modal-title">
+              {askBatchSentence(groupOf(batchAsk.gid)!, groupOf(batchAsk.gid)!.qty)}
+            </div>
+            <div class="modal-btns">
+              <button class="btn" data-testid="batch-no" onClick={() => decideBatch(false)}>
+                逐颗焊
+              </button>
+              <button class="btn btn-primary" data-testid="batch-yes" onClick={() => decideBatch(true)}>
+                一起焊
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fullMap && (
+        <div class="map-full">
+          <div class="map-full-bar">
+            <span>
+              {sideWord(viewSide)}
+              {viewSide === 'bottom' ? ' · 镜像视图' : ''}
+            </span>
+            <button
+              class="chip"
+              data-testid="map-follow"
+              onClick={() => setFollowKey((k) => k + 1)}
+            >
+              回到当前
+            </button>
+            <button class="btn btn-small" data-testid="map-close" onClick={() => setFullMap(false)}>
+              ✕ 关闭
+            </button>
+          </div>
+          <div class="map-full-body">
+            <BoardMap key={followKey} {...mapCommon} mode="full" />
+          </div>
+          <div class="map-full-hint muted">双指缩放 · 单指平移 · 双击回全景</div>
+        </div>
+      )}
     </div>
   );
 }
