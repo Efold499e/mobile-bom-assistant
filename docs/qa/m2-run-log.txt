@@ -1,0 +1,111 @@
+### A. unittest discover (acceptance 1+2..7)
+41
+Ran 41 tests in 0.853s
+
+OK
+
+### B. CLI x3 formats -> M0 validator (acceptance 8)
+bom2task: 7 placements / 6 groups / 2 polarity / top/bottom
+--check ------------------------------
+project    : kicad_min (source kicad)
+board      : 45.0 x 32.0 mm, 1 landmark(s)
+placements : 7  groups: 6  polarity: 2  sides: top/bottom
+groups (default order, count the bags against this):
+  g0:   1 x 100nF  (0603)
+  g3:   2 x 10k  (0603)
+  g2:   1 x RED  (0805 [polarity])
+  g4:   1 x ME6211  (TSSOP-8 [polarity])
+  g1:   1 x USB-C  (USB_C_Receptacle)
+  g5:   1 x 4.7k  (0603)
+excluded parts: 1
+  H1 (MountingHole:MountingHole_3.2mm_M3)
+--------------------------------------
+written: build\out.json
+cli exit=0
+WARN W_SPEAK: missing; speaker will fall back to raw value (at groups[4].value_speak)
+STATS placements=7 groups=6 polarity=2 sides=2 landmarks=1
+validate exit=0
+jlc cli exit=0
+STATS placements=6 groups=5 polarity=1 sides=2 landmarks=1
+jlc validate exit=0
+ibom cli exit=0
+STATS placements=5 groups=4 polarity=1 sides=2 landmarks=0
+ibom validate exit=0
+
+### C. stdlib-only import check (acceptance 9)
+converter/\bom2task.py:14:import argparse
+converter/\bom2task.py:15:import datetime
+converter/\bom2task.py:16:import json
+converter/\bom2task.py:17:import sys
+converter/\bom2task.py:18:from pathlib import Path
+converter/\bom2task.py:24:from model import build_task  # noqa: E402
+converter/\bom2task.py:25:from parsers import ibom as ibom_parser  # noqa: E402
+converter/\bom2task.py:26:from parsers import jlc as jlc_parser  # noqa: E402
+converter/\bom2task.py:27:from parsers import kicad as kicad_parser  # noqa: E402
+converter/\model.py:11:import re
+converter/\model.py:12:from dataclasses import dataclass, field
+converter/\model.py:14:from normalize import Norm, normalize_value
+converter/\model.py:15:from speak import footprint_display_name, footprint_speak, height_mm_of, landmark_speak
+converter/\normalize.py:15:import re
+converter/\normalize.py:16:from dataclasses import dataclass
+converter/\speak.py:6:import re
+converter/\parsers\ibom.py:10:import json
+converter/\parsers\ibom.py:11:from pathlib import Path
+converter/\parsers\ibom.py:13:from model import Part, TOP, BOTTOM
+converter/\parsers\jlc.py:15:import csv
+converter/\parsers\jlc.py:16:from pathlib import Path
+converter/\parsers\jlc.py:18:from model import Part, TOP, BOTTOM
+converter/\parsers\kicad.py:9:import math
+converter/\parsers\kicad.py:10:from pathlib import Path
+converter/\parsers\kicad.py:12:from model import Part, TOP, BOTTOM
+converter/\tests\test_normalize.py:4:import sys
+converter/\tests\test_normalize.py:5:import unittest
+converter/\tests\test_normalize.py:6:from pathlib import Path
+converter/\tests\test_normalize.py:10:from normalize import normalize_value
+converter/\tests\test_parsers.py:6:import sys
+converter/\tests\test_parsers.py:7:import unittest
+converter/\tests\test_parsers.py:8:from pathlib import Path
+converter/\tests\test_parsers.py:12:from model import build_task
+converter/\tests\test_parsers.py:13:from parsers import ibom, jlc, kicad
+converter/\tests\test_parsers.py:105:        import tempfile, os
+converter/\tests\test_model.py:4:import sys
+converter/\tests\test_model.py:5:import unittest
+converter/\tests\test_model.py:6:from pathlib import Path
+converter/\tests\test_model.py:10:from model import (
+converter/\tests\test_cli.py:6:import subprocess
+converter/\tests\test_cli.py:7:import sys
+converter/\tests\test_cli.py:8:import tempfile
+converter/\tests\test_cli.py:9:import unittest
+converter/\tests\test_cli.py:10:from pathlib import Path
+converter/\tests\test_golden.py:7:import json
+converter/\tests\test_golden.py:8:import sys
+converter/\tests\test_golden.py:9:import unittest
+converter/\tests\test_golden.py:10:from pathlib import Path
+converter/\tests\test_golden.py:14:from bom2task import convert
+converter/\tests\test_golden.py:34:            import difflib
+--- tests dir imports:
+converter/tests/\test_cli.py:6:import subprocess
+converter/tests/\test_cli.py:7:import sys
+converter/tests/\test_cli.py:8:import tempfile
+converter/tests/\test_cli.py:9:import unittest
+converter/tests/\test_cli.py:10:from pathlib import Path
+converter/tests/\test_golden.py:7:import json
+converter/tests/\test_golden.py:8:import sys
+converter/tests/\test_golden.py:9:import unittest
+converter/tests/\test_golden.py:10:from pathlib import Path
+converter/tests/\test_golden.py:14:from bom2task import convert
+converter/tests/\test_golden.py:34:            import difflib
+converter/tests/\test_model.py:4:import sys
+converter/tests/\test_model.py:5:import unittest
+converter/tests/\test_model.py:6:from pathlib import Path
+converter/tests/\test_model.py:10:from model import (
+converter/tests/\test_normalize.py:4:import sys
+converter/tests/\test_normalize.py:5:import unittest
+converter/tests/\test_normalize.py:6:from pathlib import Path
+converter/tests/\test_normalize.py:10:from normalize import normalize_value
+converter/tests/\test_parsers.py:6:import sys
+converter/tests/\test_parsers.py:7:import unittest
+converter/tests/\test_parsers.py:8:from pathlib import Path
+converter/tests/\test_parsers.py:12:from model import build_task
+converter/tests/\test_parsers.py:13:from parsers import ibom, jlc, kicad
+converter/tests/\test_parsers.py:105:        import tempfile, os

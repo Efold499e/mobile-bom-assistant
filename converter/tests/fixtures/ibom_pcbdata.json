@@ -1,0 +1,23 @@
+{
+  "pcb": {
+    "outline": [[0, 0], [45, 0], [45, 32], [8, 32], [0, 24]]
+  },
+  "bom": [
+    ["10k", "0603", ["R1", "R2"]],
+    ["104", "0603", ["C1"]],
+    ["RED", "LED_0805", ["LED1"]],
+    ["4k7", "0603", ["R3"]]
+  ],
+  "footprints": [
+    { "refdes": "R1", "layer": "F", "center": { "x": 12, "y": 6 }, "rotation": 0,
+      "bounding_box": { "start": [11, 5.4], "end": [13, 6.6] } },
+    { "refdes": "R2", "layer": "F", "center": { "x": 20, "y": 6 }, "rotation": 0,
+      "bounding_box": { "start": [19, 5.4], "end": [21, 6.6] } },
+    { "refdes": "C1", "layer": "F", "center": { "x": 28, "y": 6 }, "rotation": 90,
+      "bounding_box": { "start": [27.4, 5], "end": [28.6, 7] } },
+    { "refdes": "LED1", "layer": "F", "center": { "x": 18, "y": 14 }, "rotation": 0,
+      "bounding_box": { "start": [17, 13], "end": [19, 15] } },
+    { "refdes": "R3", "layer": "B", "center": { "x": 18, "y": 24 }, "rotation": 0,
+      "bounding_box": { "start": [17, 23.4], "end": [19, 24.6] } }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "format": "solder-task-json",
+  "version": 1,
+  "meta": {
+    "project": "jlc_std_xy",
+    "source": "jlc",
+    "created_at": "2026-10-11T12:00:00+08:00",
+    "board": {
+      "width_mm": 34.0,
+      "height_mm": 30.0,
+      "outline": [
+        [
+          0.0,
+          30.0
+        ],
+        [
+          34.0,
+          30.0
+        ],
+        [
+          34.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ]
+      ]
+    },
+    "landmarks": [
+      {
+        "ref": "J1",
+        "speak": "J1 接插件",
+        "x_mm": 5.0,
+        "y_mm": 11.0
+      }
+    ]
+  },
+  "sides": [
+    "top",
+    "bottom"
+  ],
+  "groups": [
+    {
+      "gid": "g0",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "100nF",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "C1"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "100纳法"
+    },
+    {
+      "gid": "g1",
+      "kind": "conn",
+      "footprint": "USB_C",
+      "value": "USB-C",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "J1"
+      ],
+      "footprint_speak": "USB_C 接插件"
+    },
+    {
+      "gid": "g2",
+      "kind": "led",
+      "footprint": "0805",
+      "value": "RED",
+      "polarity": true,
+      "qty": 1,
+      "refdes": [
+        "LED1"
+      ],
+      "footprint_speak": "0805 发光二极管"
+    },
+    {
+      "gid": "g3",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "10k",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "R1",
+        "R2"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "10千欧"
+    },
+    {
+      "gid": "g4",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "4.7k",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R5"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "4.7千欧"
+    }
+  ],
+  "placements": [
+    {
+      "pid": 0,
+      "gid": "g0",
+      "ref": "C1",
+      "side": "top",
+      "x_mm": 29.0,
+      "y_mm": 5.0,
+      "rot_deg": 0.0
+    },
+    {
+      "pid": 1,
+      "gid": "g1",
+      "ref": "J1",
+      "side": "top",
+      "x_mm": 5.0,
+      "y_mm": 11.0,
+      "rot_deg": 0.0
+    },
+    {
+      "pid": 2,
+      "gid": "g2",
+      "ref": "LED1",
+      "side": "top",
+      "x_mm": 19.0,
+      "y_mm": 13.0,
+      "rot_deg": 270.0
+    },
+    {
+      "pid": 3,
+      "gid": "g3",
+      "ref": "R1",
+      "side": "top",
+      "x_mm": 13.0,
+      "y_mm": 5.0,
+      "rot_deg": 0.0
+    },
+    {
+      "pid": 4,
+      "gid": "g3",
+      "ref": "R2",
+      "side": "top",
+      "x_mm": 21.0,
+      "y_mm": 5.0,
+      "rot_deg": 0.0
+    },
+    {
+      "pid": 5,
+      "gid": "g4",
+      "ref": "R5",
+      "side": "bottom",
+      "x_mm": 19.0,
+      "y_mm": 25.0,
+      "rot_deg": 180.0
+    }
+  ],
+  "group_order_default": [
+    "g0",
+    "g3",
+    "g2",
+    "g1",
+    "g4"
+  ]
+}

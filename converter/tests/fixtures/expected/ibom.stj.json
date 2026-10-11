@@ -1,0 +1,167 @@
+{
+  "format": "solder-task-json",
+  "version": 1,
+  "meta": {
+    "project": "ibom_pcbdata",
+    "source": "ibom",
+    "created_at": "2026-10-11T12:00:00+08:00",
+    "board": {
+      "width_mm": 45,
+      "height_mm": 32,
+      "outline": [
+        [
+          0,
+          0
+        ],
+        [
+          45,
+          0
+        ],
+        [
+          45,
+          32
+        ],
+        [
+          8,
+          32
+        ],
+        [
+          0,
+          24
+        ]
+      ]
+    },
+    "landmarks": []
+  },
+  "sides": [
+    "top",
+    "bottom"
+  ],
+  "groups": [
+    {
+      "gid": "g0",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "100nF",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "C1"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "100纳法"
+    },
+    {
+      "gid": "g1",
+      "kind": "led",
+      "footprint": "0805",
+      "value": "RED",
+      "polarity": true,
+      "qty": 1,
+      "refdes": [
+        "LED1"
+      ],
+      "footprint_speak": "0805 发光二极管"
+    },
+    {
+      "gid": "g2",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "10k",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "R1",
+        "R2"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "10千欧"
+    },
+    {
+      "gid": "g3",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "4.7k",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R3"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "4.7千欧"
+    }
+  ],
+  "placements": [
+    {
+      "pid": 0,
+      "gid": "g0",
+      "ref": "C1",
+      "side": "top",
+      "x_mm": 28.0,
+      "y_mm": 6.0,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        1.2,
+        2.0
+      ]
+    },
+    {
+      "pid": 1,
+      "gid": "g1",
+      "ref": "LED1",
+      "side": "top",
+      "x_mm": 18.0,
+      "y_mm": 14.0,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.0,
+        2.0
+      ]
+    },
+    {
+      "pid": 2,
+      "gid": "g2",
+      "ref": "R1",
+      "side": "top",
+      "x_mm": 12.0,
+      "y_mm": 6.0,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.0,
+        1.2
+      ]
+    },
+    {
+      "pid": 3,
+      "gid": "g2",
+      "ref": "R2",
+      "side": "top",
+      "x_mm": 20.0,
+      "y_mm": 6.0,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.0,
+        1.2
+      ]
+    },
+    {
+      "pid": 4,
+      "gid": "g3",
+      "ref": "R3",
+      "side": "bottom",
+      "x_mm": 18.0,
+      "y_mm": 24.0,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.0,
+        1.2
+      ]
+    }
+  ],
+  "group_order_default": [
+    "g0",
+    "g2",
+    "g1",
+    "g3"
+  ]
+}
