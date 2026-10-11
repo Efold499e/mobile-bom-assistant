@@ -68,6 +68,15 @@ export class Speaker {
     return this.synth !== null;
   }
 
+  /** Settings screen: adjust the speech rate (0.7-1.2, plan section 6). */
+  setRate(rate: number) {
+    this.rate = Math.min(1.2, Math.max(0.7, rate));
+  }
+
+  get currentRate(): number {
+    return this.rate;
+  }
+
   /** Announce text immediately; cancels any queued speech first. */
   say(text: string) {
     recordSay(text);

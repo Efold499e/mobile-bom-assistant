@@ -82,6 +82,16 @@ export function batchMilestoneSentence(remaining: number): string | null {
   return null;
 }
 
+/** 「全部播完了，进入收尾清单。」 -- queue exhausted with leftovers (plan §6). */
+export function finishListSentence(): string {
+  return '全部播完了，进入收尾清单。';
+}
+
+/** 「正面焊完了，翻面继续。」 / 「背面焊完了，翻面继续。」 (plan §9). */
+export function faceDoneSentence(side: Side): string {
+  return `${side === 'top' ? '正面' : '背面'}焊完了，翻面继续。`;
+}
+
 /** 「收工。共 32 颗，用时 47 分钟。」 */
 export function finishSentence(task: StjTask, elapsedMs: number): string {
   const minutes = Math.max(1, Math.round(elapsedMs / 60000));

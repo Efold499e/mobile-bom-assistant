@@ -7,7 +7,7 @@ import { deleteTask, getTask, listTasks, putTask, resetRun } from '../store/db';
 import { parseStjText } from '../loader';
 import { getSpeaker } from '../app';
 
-export function HomeScreen(props: { onImport(): void; onRun(taskId: string): void }) {
+export function HomeScreen(props: { onImport(): void; onSettings(): void; onRun(taskId: string): void }) {
   const [tasks, setTasks] = useState<TaskRecord[]>([]);
 
   const refresh = () => {
@@ -28,7 +28,10 @@ export function HomeScreen(props: { onImport(): void; onRun(taskId: string): voi
     <div className="screen">
       <div className="topbar">
         <h1>焊接任务</h1>
-        <button className="btn btn-small" onClick={props.onImport}>导入任务</button>
+        <span class="topbar-actions">
+          <button className="btn btn-small" onClick={props.onImport}>导入任务</button>
+          <button className="btn btn-small" data-testid="open-settings" onClick={props.onSettings}>⚙ 设置</button>
+        </span>
       </div>
       <div className="stack">
         {tasks.map((t) => {

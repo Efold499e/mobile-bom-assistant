@@ -1,23 +1,24 @@
-// Run screen: the product's heart (plan sections 2 + 5).
+// Run screen: the product's heart (plan sections 2 + 5 + 8 + 9).
 // Fixed layout: big card area on top (card left 2/3 + map thumbnail right 1/3),
 // exactly three buttons below (上一个 1fr / 重新播报 1fr / 完成 2fr).
-// Gestures: card tap = replay, card swipe-up = skip, thumbnail tap = fullscreen
-// map, prev short-press = step back (rework), long-press 600ms (double-pulse
-// confirm) = undo mistaken completion.
-// M3 adds: orientation calibration before the loop (UI-layer flow, not a
-// dispatcher command), direction words on the card third row, bottom-face
-// mirror view, and batch mode (ask once per group; blip per piece).
+// Flow orchestration (all UI-layer; the runner/dispatcher never grew new
+// commands): 报菜名 menu -> calibration -> loop -> (face flip on side change)
+// -> finishing list for skipped units -> makeup pass reusing the same loop ->
+// summary. Batch mode asks once per group; blip per piece.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getSpeaker, type FinishSummary } from '../app';
+import { getSpeaker, type FinishSummary, type SideStat } from '../app';
 import { dispatch, type DispatcherHooks } from '../dispatcher/dispatcher';
-import { planQueue, type QueueUnit } from '../planner/snake';
+import { planQueue, effectiveGidOrder, type QueueUnit } from '../planner/snake';
 import { BatchTracker, batchCountOf, remainingPendingInGroup } from '../runner/batch';
+import { finishListPids, makeupRunner, mergeMakeup } from '../runner/makeup';
 import type { RunnerState } from '../runner/runner';
 import { applyCommand, initialRunner, nextPendingIndex } from '../runner/runner';
 import {
   askBatchSentence,
   batchMilestoneSentence,
+  faceDoneSentence,
+  finishListSentence,
   finishSentence,
   groupIntroSentence,
   locationCardText,
@@ -25,28 +26,44 @@ import {
   sideWord,
   unitSentence,
 } from '../speaker/sentence';
-import { getTask, persistCalib, persistRun } from '../store/db';
+import {
+  getSettings,
+  getTask,
+  persistCalib,
+  persistPickOrder,
+  persistRun,
+} from '../store/db';
 import type { StjTask } from '../loader';
 import type { Side } from '../loader/types';
 import { BoardMap } from '../boardmap/BoardMap';
 import { effectiveDeg, type Flip } from '../boardmap/geo';
 import { CalibrateScreen } from './Calibrate';
+import { MenuScreen } from './Menu';
 import { WakeLockHolder, lockPortrait, screenAngleDeg, vibrate } from '../util/hardware';
 
 const LONG_PRESS_MS = 600;
 
-function summarize(s: RunnerState): FinishSummary {
+function summarize(s: RunnerState, task: StjTask): FinishSummary {
   let done = 0;
   let skipped = 0;
   for (const pid of s.order) {
     if (s.statuses[pid] === 'done') done += 1;
     else if (s.statuses[pid] === 'skipped') skipped += 1;
   }
+  const sides: SideStat[] = task.sides.map((side) => {
+    const pids = task.placements.filter((p) => p.side === side).map((p) => p.pid);
+    return {
+      side,
+      total: pids.length,
+      done: pids.filter((pid) => s.statuses[pid] === 'done').length,
+    };
+  });
   return {
     total: s.order.length,
     done,
     skipped,
     elapsedMs: Math.max(0, (s.finishedAt ?? Date.now()) - (s.startedAt ?? s.finishedAt ?? Date.now())),
+    sides,
   };
 }
 
@@ -57,22 +74,27 @@ export function RunScreen(props: {
 }) {
   const [task, setTask] = useState<StjTask | null>(null);
   const [, setTick] = useState(0); // re-render after each dispatch
-  const [phase, setPhase] = useState<'loading' | 'calibrate' | 'loop'>('loading');
+  const [phase, setPhase] = useState<'loading' | 'menu' | 'calibrate' | 'loop' | 'finishList'>('loading');
   const [calibDeg, setCalibDeg] = useState<number | null>(null);
   const [calibFlip, setCalibFlip] = useState<'lr' | 'tb'>('lr');
   const [fullMap, setFullMap] = useState(false);
   const [followKey, setFollowKey] = useState(0);
   const [batchAsk, setBatchAsk] = useState<{ gid: string } | null>(null);
   const [batchGids, setBatchGids] = useState<Set<string>>(new Set());
+  const [flipAsk, setFlipAsk] = useState<{ from: Side } | null>(null);
+  const [menuPicks, setMenuPicks] = useState<string[] | undefined>(undefined);
 
   const queue = useRef<QueueUnit[]>([]);
   const runnerRef = useRef<RunnerState | null>(null);
+  const mainRef = useRef<RunnerState | null>(null); // main run (makeup runs beside it)
+  const makeupRef = useRef<RunnerState | null>(null);
   const wakeLock = useRef(new WakeLockHolder());
   const taskRef = useRef<StjTask | null>(null);
   const placementsById = useRef(new Map<number, { x_mm: number; y_mm: number }>());
   const startedRef = useRef(false);
   const batchRef = useRef(new BatchTracker());
   const pendingAskRef = useRef<string | null>(null);
+  const sideRef = useRef<Side>('top'); // face currently on the bench
   // view info as refs so the memoized dispatcher hooks never read stale state
   const viewInfoRef = useRef<{ deg: number | null; flip: 'lr' | 'tb' }>({ deg: null, flip: 'lr' });
 
@@ -85,7 +107,7 @@ export function RunScreen(props: {
       taskRef.current = t;
       setTask(t);
       placementsById.current = new Map(t.placements.map((p) => [p.pid, p] as const));
-      const planned = planQueue(t);
+      const planned = planQueue(t, rec.pickOrder);
       queue.current = planned;
       const order = planned.map((u) => u.pid);
       runnerRef.current = rec.run
@@ -100,17 +122,31 @@ export function RunScreen(props: {
           if (next !== -1) s.pointer = next;
         }
       }
+      sideRef.current =
+        runnerRef.current.pointer >= 0
+          ? queue.current[runnerRef.current.pointer].side
+          : 'top';
       // resume straight into the summary if this task was already finished
       if (rec.run?.finishedAt) {
-        props.onFinish(summarize(runnerRef.current));
+        props.onFinish(summarize(runnerRef.current, t));
         return;
       }
+      // settings into the live speaker / batch tracker
+      const st = await getSettings();
+      if (cancelled) return;
+      getSpeaker().setRate(st.rate);
+      batchRef.current.setThreshold(st.batchThreshold);
+      setMenuPicks(rec.pickOrder);
       if (rec.calib) {
-        // sync the view-info ref before startLoop: the start announcement
-        // dispatches before the re-render and must carry orientation words
+        // load the saved calibration into state in EVERY entry path (menu,
+        // calibrate, loop) so the menu path can enter the loop directly
         viewInfoRef.current = { deg: effectiveDeg(rec.calib.deg, screenAngleDeg()), flip: rec.calib.flip };
         setCalibDeg(rec.calib.deg);
         setCalibFlip(rec.calib.flip);
+      }
+      if (!rec.run && !rec.pickOrder) {
+        setPhase('menu'); // fresh start: 报菜名 first
+      } else if (rec.calib) {
         setPhase('loop');
         startLoop();
       } else {
@@ -174,6 +210,7 @@ export function RunScreen(props: {
       },
       setState: (s) => {
         runnerRef.current = s;
+        if (!makeupRef.current) mainRef.current = s;
         setTick((x) => x + 1);
       },
       announce: (s, ev) => {
@@ -183,6 +220,15 @@ export function RunScreen(props: {
         const unit = queue.current[idx];
         const group = unit && groupOf(unit.gid);
         if (!group) return;
+        // face flip: the first unit of the next face opens the confirm dialog
+        // (plan section 9: 双面衔接; reuses calibration, no new command)
+        if (unit.side !== sideRef.current) {
+          const from = sideRef.current;
+          sideRef.current = unit.side;
+          setFlipAsk({ from });
+          getSpeaker().say(faceDoneSentence(from));
+          return;
+        }
         // batch mode is UI-layer flow on top of the unchanged runner: an
         // undecided eligible group pops the ask (silently), an active batch
         // group stays silent (blips come per completion)
@@ -197,20 +243,28 @@ export function RunScreen(props: {
       },
       finish: (ev) => {
         const t = taskRef.current;
-        if (t) getSpeaker().say(finishSentence(t, ev.elapsedMs));
-        setTimeout(
-          () =>
-            props.onFinish({
-              total: ev.total,
-              done: ev.done,
-              skipped: ev.skipped,
-              elapsedMs: ev.elapsedMs,
-            }),
-          400,
-        );
+        if (!t) return;
+        if (makeupRef.current) {
+          // makeup queue drained: merge and head to the summary (plan §9 全清)
+          const merged = mergeMakeup(mainRef.current!, makeupRef.current);
+          makeupRef.current = null;
+          mainRef.current = merged;
+          runnerRef.current = merged;
+          void persistRun(props.taskId, merged);
+          getSpeaker().say(finishSentence(t, merged.finishedAt! - merged.startedAt!));
+          setTimeout(() => props.onFinish(summarize(merged, t)), 400);
+        } else if (ev.skipped > 0) {
+          getSpeaker().say(finishListSentence());
+          setPhase('finishList');
+        } else {
+          getSpeaker().say(finishSentence(t, ev.elapsedMs));
+          setTimeout(() => props.onFinish(summarize(runnerRef.current!, t)), 400);
+        }
       },
       vibrate: (pattern) => vibrate(pattern),
-      persist: (s) => void persistRun(props.taskId, s),
+      persist: (s) => {
+        if (!makeupRef.current) void persistRun(props.taskId, s);
+      },
       onEvent: (ev) => {
         // batch feedback per completed/skipped piece + 剩3/剩1 milestones
         if (ev.type !== 'completed' && ev.type !== 'skipped') return;
@@ -270,6 +324,43 @@ export function RunScreen(props: {
     if (!startedRef.current) startLoop();
   };
 
+  const startWithOrder = (picks: string[]) => {
+    const t = taskRef.current!;
+    const order = effectiveGidOrder(t, picks);
+    void persistPickOrder(props.taskId, order).then(() => {
+      queue.current = planQueue(t, order);
+      const s = initialRunner(queue.current.map((u) => u.pid));
+      runnerRef.current = s;
+      mainRef.current = s;
+      sideRef.current = queue.current[0]?.side ?? 'top';
+      if (calibDeg === null) setPhase('calibrate');
+      else {
+        viewInfoRef.current = { deg: effectiveDeg(calibDeg, screenAngleDeg()), flip: calibFlip };
+        setPhase('loop');
+        startLoop();
+      }
+    });
+  };
+
+  const confirmFlip = (flip: 'lr' | 'tb') => {
+    setFlipAsk(null);
+    setCalibFlip(flip);
+    sideRef.current = queue.current[runnerRef.current?.pointer ?? 0]?.side ?? sideRef.current;
+    void persistCalib(props.taskId, { deg: calibDeg ?? 0, flip, at: Date.now() });
+    setPhase('calibrate'); // 翻面必须重标 (plan section 7)
+  };
+
+  const startMakeup = () => {
+    const main = mainRef.current ?? runnerRef.current!;
+    const leftovers = finishListPids(main.order, main.statuses);
+    if (leftovers.length === 0) return;
+    makeupRef.current = makeupRunner(leftovers);
+    runnerRef.current = makeupRef.current;
+    sideRef.current = queue.current[main.order.indexOf(leftovers[0])].side;
+    setPhase('loop');
+    dispatch(hooksRef.current, 'start', Date.now());
+  };
+
   // ---- prev button: short press vs 600ms long press (undo) ----
   const holdTimer = useRef<number | null>(null);
   const armedLong = useRef(false);
@@ -319,6 +410,16 @@ export function RunScreen(props: {
   if (!task || !runnerRef.current || phase === 'loading') {
     return <div class="screen" />;
   }
+  if (phase === 'menu') {
+    return (
+      <MenuScreen
+        task={task}
+        initialPicks={menuPicks}
+        onStart={startWithOrder}
+        onDefault={() => startWithOrder([])}
+      />
+    );
+  }
   if (phase === 'calibrate') {
     return (
       <CalibrateScreen
@@ -327,6 +428,63 @@ export function RunScreen(props: {
         onLock={lockCal}
         onSkip={skipCal}
       />
+    );
+  }
+  if (phase === 'finishList') {
+    const main = mainRef.current ?? runnerRef.current;
+    const leftovers = finishListPids(main.order, main.statuses);
+    const overrideStatuses: Record<number, 'pending' | 'done' | 'skipped'> = {};
+    for (const pid of main.order) {
+      overrideStatuses[pid] = leftovers.includes(pid) ? 'pending' : 'done';
+    }
+    const rows = leftovers.map((pid) => {
+      const unit = queue.current[main.order.indexOf(pid)];
+      const g = groupOf(unit.gid)!;
+      return { pid, unit, g };
+    });
+    return (
+      <div class="screen">
+        <div class="topbar">
+          <h1>收尾清单</h1>
+          <span class="badge">{rows.length} 颗待补</span>
+        </div>
+        <div class="finish-body">
+          <div class="finish-map">
+            <BoardMap
+              task={task}
+              statuses={overrideStatuses}
+              currentPid={null}
+              viewSide="top"
+              calibDeg={effCal ?? 0}
+              flip="none"
+              batchGids={new Set(rows.map((r) => r.unit.gid))}
+              mode="full"
+            />
+          </div>
+          <div class="stack">
+            {rows.map((r) => (
+              <div class="task-card finish-row" key={r.pid}>
+                <div class="row1">
+                  <span class="name">{r.unit.ref}</span>
+                  <span class="badge">{sideWord(r.unit.side)}</span>
+                  <span class="badge warn">第 {main.order.indexOf(r.pid) + 1} 颗</span>
+                </div>
+                <div class="muted">
+                  {r.g.value} · {r.g.footprint_speak ?? r.g.footprint}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div class="controls">
+          <button class="btn" data-testid="finish-exit" onClick={props.onExit}>
+            先收工
+          </button>
+          <button class="btn btn-primary" data-testid="start-makeup" style={{ gridColumn: 'span 2' }} onClick={startMakeup}>
+            开始补焊（{rows.length} 颗）
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -344,6 +502,7 @@ export function RunScreen(props: {
     placement && effCal !== null && task
       ? locationCardText(placement.x_mm, placement.y_mm, task, flipFor(unit!.side, calibFlip), effCal)
       : null;
+  const inMakeup = makeupRef.current !== null;
 
   const mapCommon = {
     task,
@@ -359,7 +518,7 @@ export function RunScreen(props: {
     <div class="screen">
       <div class="run-meta">
         <span class="idx">
-          第 {Math.min(state.pointer + 1, total)}/{total} 颗
+          {inMakeup ? '补焊 ' : ''}第 {Math.min(state.pointer + 1, total)}/{total} 颗
         </span>
         <span class="run-meta-right">
           {unit && <span class="badge">{sideWord(unit.side)}</span>}
@@ -445,6 +604,29 @@ export function RunScreen(props: {
               </button>
               <button class="btn btn-primary" data-testid="batch-yes" onClick={() => decideBatch(true)}>
                 一起焊
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {flipAsk && (
+        <div class="modal" data-testid="flip-ask">
+          <div class="modal-card">
+            <div class="modal-title">{sideWord(flipAsk.from)}焊完了</div>
+            <div class="muted" style={{ textAlign: 'center' }}>
+              翻面后地标位置会对调（
+              {task.meta.landmarks.length > 0
+                ? `如 ${task.meta.landmarks[0].ref} ${task.meta.landmarks[0].speak}`
+                : '按板框对齐'}
+              ），下一步重新标定。
+            </div>
+            <div class="modal-btns">
+              <button class="btn" data-testid="flip-lr" onClick={() => confirmFlip('lr')}>
+                左右翻
+              </button>
+              <button class="btn btn-primary" data-testid="flip-tb" onClick={() => confirmFlip('tb')}>
+                上下翻
               </button>
             </div>
           </div>

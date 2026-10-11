@@ -14,14 +14,22 @@ export function shouldAskBatch(qty: number, threshold: number = BATCH_THRESHOLD)
 
 export type BatchDecision = 'batch' | 'single';
 
-/** One decision per group per session; a refresh re-asks (harmless, and the
- * plan wants the question at group entry). */
 export class BatchTracker {
+  private threshold: number | null;
   private decided = new Map<string, BatchDecision>();
   private activeBatch = new Set<string>();
 
+  constructor(threshold: number | null = BATCH_THRESHOLD) {
+    this.threshold = threshold;
+  }
+
   shouldAsk(group: StjGroup): boolean {
-    return shouldAskBatch(group.qty) && !this.decided.has(group.gid);
+    return this.threshold !== null && group.qty >= this.threshold && !this.decided.has(group.gid);
+  }
+
+  /** Settings screen: live threshold change. */
+  setThreshold(threshold: number | null) {
+    this.threshold = threshold;
   }
 
   decide(group: StjGroup, d: BatchDecision): void {

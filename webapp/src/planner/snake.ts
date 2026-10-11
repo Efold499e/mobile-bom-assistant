@@ -1,5 +1,7 @@
 // Planner: expand a task into the weld queue.
-// - Group order: consume group_order_default as-is (PC pre-computed pick order).
+// - Group order: the user's pick order (报菜名点选序) when provided, else the
+//   PC pre-computed group_order_default. Unpicked groups fall in default
+//   order after the picked ones (partial picks are forgiving).
 // - Inside a group: serpentine scan -- band placements by y (band height =
 //   median effective bbox height * 1.5, gap-clustered), alternate x direction
 //   per band so the iron walks the shortest path.
@@ -16,7 +18,18 @@ export interface QueueUnit {
   seq: number; // 1-based position in the whole queue
 }
 
-export function planQueue(task: StjTask): QueueUnit[] {
+/** The group order the queue will run: picks first (in pick order), then the
+ * rest in default order. Invalid/unknown gids in picks are ignored. */
+export function effectiveGidOrder(task: StjTask, picks?: string[]): string[] {
+  const def = task.group_order_default;
+  if (!picks || picks.length === 0) return def;
+  const known = new Set(def);
+  const picked: string[] = [];
+  for (const gid of picks) if (known.has(gid) && !picked.includes(gid)) picked.push(gid);
+  return [...picked, ...def.filter((gid) => !picked.includes(gid))];
+}
+
+export function planQueue(task: StjTask, picks?: string[]): QueueUnit[] {
   const byGid = new Map<string, StjPlacement[]>();
   for (const p of task.placements) {
     const arr = byGid.get(p.gid) ?? [];
@@ -27,7 +40,7 @@ export function planQueue(task: StjTask): QueueUnit[] {
 
   const units: QueueUnit[] = [];
   let seq = 0;
-  for (const gid of task.group_order_default) {
+  for (const gid of effectiveGidOrder(task, picks)) {
     const group = groupById.get(gid);
     const placements = byGid.get(gid);
     if (!group || !placements) continue; // validated upstream; defensive

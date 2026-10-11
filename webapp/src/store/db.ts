@@ -8,8 +8,29 @@ import { resumePosition } from '../runner/runner';
 import type { StjTask } from '../loader/types';
 
 const DB_NAME = 'solder-assistant';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE = 'tasks';
+const SETTINGS_STORE = 'settings';
+
+/** App settings (M4): TTS rate 0.7-1.2 (default 0.9), batch threshold
+ * (default 4, null = batch off). Persisted once per browser in its own store. */
+export interface AppSettings {
+  rate: number;
+  batchThreshold: number | null;
+}
+
+export const DEFAULT_SETTINGS: AppSettings = { rate: 0.9, batchThreshold: 4 };
+
+/** Clamp/coerce arbitrary (old/corrupt) values into a valid AppSettings. */
+export function normalizeSettings(raw: unknown): AppSettings {
+  const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
+  const rate = typeof o['rate'] === 'number' && Number.isFinite(o['rate']) ? o['rate'] : DEFAULT_SETTINGS.rate;
+  const th = o['batchThreshold'];
+  return {
+    rate: Math.min(1.2, Math.max(0.7, Math.round(rate * 100) / 100)),
+    batchThreshold: th === null ? null : typeof th === 'number' && Number.isInteger(th) && th >= 2 && th <= 12 ? th : DEFAULT_SETTINGS.batchThreshold,
+  };
+}
 
 /** Orientation calibration (plan section 7), persisted per task so a second
  * session skips the calibration step. M3 sets deg only; flip arrives with the
@@ -18,13 +39,6 @@ export interface CalibInfo {
   deg: number;
   flip: 'lr' | 'tb';
   at: number;
-}
-
-/** App settings (M4): TTS rate 0.7-1.2 (default 0.9), batch threshold
- * (default 4, null = batch off). */
-export interface TaskSettings {
-  rate: number;
-  batchThreshold: number | null;
 }
 
 export interface TaskRecord {
@@ -37,7 +51,6 @@ export interface TaskRecord {
   /** M4: user pick order from the menu screen (报菜名点选序), as gids;
    * absent -> fall back to task.group_order_default. */
   pickOrder?: string[];
-  settings?: TaskSettings;
   savedAt: number;
 }
 
@@ -83,8 +96,23 @@ export function openDb(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE)) {
         db.createObjectStore(STORE, { keyPath: 'taskId' });
       }
+      if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+        db.createObjectStore(SETTINGS_STORE, { keyPath: 'id' });
+      }
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      const db = req.result;
+      // a PWA update may request a higher version while this page is open in
+      // another tab; release the connection so the upgrade is never blocked
+      db.onversionchange = () => {
+        db.close();
+        if (dbPromise) {
+          dbPromise = null;
+        }
+      };
+      resolve(db);
+    };
+    req.onblocked = () => reject(new Error('indexedDB upgrade blocked by another open page'));
     req.onerror = () => reject(req.error ?? new Error('indexedDB open failed'));
   });
   return dbPromise;
@@ -122,12 +150,15 @@ export async function deleteTask(taskId: string): Promise<void> {
   await asPromise(tx(db, 'readwrite').delete(taskId));
 }
 
-/** Reset welding progress (keep the imported task). */
+/** Reset welding progress (keep the imported task); the 报菜名 pick order is
+ * cleared too so a deliberate fresh start re-opens the menu. Calibration is
+ * kept (the board on the desk does not move). */
 export async function resetRun(taskId: string): Promise<void> {
   await enqueue(async () => {
     const rec = await getTask(taskId);
     if (!rec) return;
     rec.run = null;
+    delete rec.pickOrder;
     await putTask(rec);
   });
 }
@@ -150,6 +181,35 @@ export async function persistCalib(taskId: string, calib: CalibInfo): Promise<vo
     rec.calib = calib;
     await putTask(rec);
   });
+}
+
+/** Persist the 报菜名 pick order for a task. */
+export async function persistPickOrder(taskId: string, pickOrder: string[]): Promise<void> {
+  await enqueue(async () => {
+    const rec = await getTask(taskId);
+    if (!rec) return;
+    rec.pickOrder = pickOrder;
+    await putTask(rec);
+  });
+}
+
+// ---- app settings (own store, single record id 'app') ----
+
+function settingsTx(db: IDBDatabase, mode: IDBTransactionMode) {
+  return db.transaction(SETTINGS_STORE, mode).objectStore(SETTINGS_STORE);
+}
+
+export async function getSettings(): Promise<AppSettings> {
+  const db = await openDb();
+  const rec = await asPromise(
+    settingsTx(db, 'readonly').get('app') as IDBRequest<unknown | undefined>,
+  );
+  return normalizeSettings(rec);
+}
+
+export async function saveSettings(s: AppSettings): Promise<void> {
+  const db = await openDb();
+  await asPromise(settingsTx(db, 'readwrite').put({ id: 'app', ...s }));
 }
 
 /** Serialize read-modify-write cycles: locking the calibration fires while the

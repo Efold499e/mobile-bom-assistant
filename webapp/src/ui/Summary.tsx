@@ -1,7 +1,7 @@
-// Minimal summary screen (M1): total pieces, elapsed time, skipped count.
-// The full closing checklist / makeup-weld flow arrives in M4.
+// Summary screen (M4): total pieces, elapsed time, per-side completion.
 
 import type { FinishSummary } from '../app';
+import { sideWord } from '../speaker/sentence';
 
 export function SummaryScreen(props: { finish: FinishSummary; onHome(): void }) {
   const minutes = Math.max(1, Math.round(props.finish.elapsedMs / 60000));
@@ -12,8 +12,14 @@ export function SummaryScreen(props: { finish: FinishSummary; onHome(): void }) 
         <div class="lines">
           <span>共 {props.finish.total} 颗</span>
           <span>焊完 {props.finish.done} 颗 · 用时 {minutes} 分钟</span>
+          {props.finish.sides.map((s) => (
+            <span key={s.side} data-testid={`side-${s.side}`}>
+              {sideWord(s.side)} {s.done}/{s.total}
+              {s.done === s.total ? ' ✓' : ''}
+            </span>
+          ))}
           {props.finish.skipped > 0 && (
-            <span class="muted">跳过 {props.finish.skipped} 颗（收尾清单将在后续版本提供补焊）</span>
+            <span class="muted">未焊 {props.finish.skipped} 颗（留在任务里，下次继续）</span>
           )}
         </div>
         <button class="btn btn-primary" onClick={props.onHome}>
