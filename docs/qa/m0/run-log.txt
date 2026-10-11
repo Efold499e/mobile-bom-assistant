@@ -1,0 +1,62 @@
+### A. validate demo (positive path)
+[OK] solder-task-json v1: demo-board (source=hand)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[0].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[1].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[2].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[3].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[4].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[5].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[6].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[10].bbox_mm)
+WARN W_BBOX: missing; consumer falls back to footprint default table (at placements[11].bbox_mm)
+STATS placements=12 groups=5 polarity=3 sides=2 landmarks=2
+exit=0
+
+### B. check_demo
+[PASS] validator exits 0 on demo task -- rc=0
+[PASS] validator prints exactly one STATS line
+       STATS placements=12 groups=5 polarity=3 sides=2 landmarks=2
+[PASS] exactly 12 placements -- got 12
+[PASS] groups >= 4 -- got 5
+[PASS] exists batch group with qty >= 4 -- g0(qty=4)
+[PASS] polarity placements >= 2 -- got 3: LED1,LED2,U1
+[PASS] bottom-side placements >= 2 -- got R5,R6
+[PASS] landmarks >= 1 with Chinese speak -- 2 landmarks, 2 with CJK speak: J1,J2
+[PASS] outline is not a 4-point rectangle -- 5 points
+[PASS] group_order_default covers all gids exactly once
+[PASS] default order welds top side before bottom side -- g0 -> g1 -> g2 -> g3 -> g4
+[PASS] small before large within each side -- top: 0603(1.28mm2), 0603(1.28mm2), 0805(2.50mm2), SOT-23-5(4.64mm2) | bottom: 0603(1.28mm2)
+
+ALL CHECKS PASSED
+exit=0
+
+### C.bad-version
+[FAIL] docs/qa/m0/bad-version.json
+ERROR E_VERSION: expected 1, got 2 (at version)
+exit=1
+
+### C.bad-missing
+[FAIL] docs/qa/m0/bad-missing.json
+ERROR E_MISSING: missing required field 'meta' (at <root>)
+exit=1
+
+### C.bad-dangling-gid
+[FAIL] docs/qa/m0/bad-dangling-gid.json
+ERROR E_DANGLING: placement references unknown gid 'g999' (at placements[0].gid)
+ERROR E_QTY: group 'g0' qty=4 but has 3 placements (at groups[0].qty)
+ERROR E_QTY: refdes set does not match the refs of this group's placements (at group 'g0')
+exit=1
+
+### D. stdlib-only import check
+tools/\check_demo.py:10:import json
+tools/\check_demo.py:11:import subprocess
+tools/\check_demo.py:12:import sys
+tools/\check_demo.py:13:from pathlib import Path
+tools/\validate_stj.py:10:import argparse
+tools/\validate_stj.py:11:import datetime
+tools/\validate_stj.py:12:import json
+tools/\validate_stj.py:13:import math
+tools/\validate_stj.py:14:import sys
+
+### E. git log/tags (before report commit)
+fatal: your current branch 'master' does not have any commits yet

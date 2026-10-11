@@ -1,0 +1,256 @@
+{
+  "format": "solder-task-json",
+  "version": 2,
+  "meta": {
+    "project": "demo-board",
+    "source": "hand",
+    "created_at": "2026-10-11T12:00:00+08:00",
+    "board": {
+      "width_mm": 45.0,
+      "height_mm": 32.0,
+      "outline": [
+        [
+          0,
+          0
+        ],
+        [
+          45,
+          0
+        ],
+        [
+          45,
+          32
+        ],
+        [
+          8,
+          32
+        ],
+        [
+          0,
+          24
+        ]
+      ]
+    },
+    "landmarks": [
+      {
+        "ref": "J1",
+        "speak": "Type-C 座",
+        "x_mm": 2.5,
+        "y_mm": 16.0
+      },
+      {
+        "ref": "J2",
+        "speak": "电源端子",
+        "x_mm": 42.5,
+        "y_mm": 8.0
+      }
+    ]
+  },
+  "sides": [
+    "top",
+    "bottom"
+  ],
+  "groups": [
+    {
+      "gid": "g0",
+      "kind": "r",
+      "footprint": "0603",
+      "footprint_speak": "0603 电阻",
+      "value": "10k",
+      "value_speak": "10千欧",
+      "polarity": false,
+      "qty": 4,
+      "refdes": [
+        "R1",
+        "R2",
+        "R3",
+        "R4"
+      ]
+    },
+    {
+      "gid": "g1",
+      "kind": "c",
+      "footprint": "0603",
+      "footprint_speak": "0603 电容",
+      "value": "100nF",
+      "value_speak": "100纳法",
+      "polarity": false,
+      "qty": 3,
+      "refdes": [
+        "C1",
+        "C2",
+        "C3"
+      ]
+    },
+    {
+      "gid": "g2",
+      "kind": "led",
+      "footprint": "0805",
+      "footprint_speak": "0805 发光二极管",
+      "value": "RED",
+      "value_speak": "红色",
+      "polarity": true,
+      "qty": 2,
+      "refdes": [
+        "LED1",
+        "LED2"
+      ]
+    },
+    {
+      "gid": "g3",
+      "kind": "ic",
+      "footprint": "SOT-23-5",
+      "footprint_speak": "五脚稳压",
+      "value": "ME6211",
+      "value_speak": "ME6211 稳压",
+      "polarity": true,
+      "qty": 1,
+      "refdes": [
+        "U1"
+      ]
+    },
+    {
+      "gid": "g4",
+      "kind": "r",
+      "footprint": "0603",
+      "footprint_speak": "0603 电阻",
+      "value": "4k7",
+      "value_speak": "4.7千欧",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "R5",
+        "R6"
+      ]
+    }
+  ],
+  "placements": [
+    {
+      "pid": 0,
+      "gid": "g0",
+      "ref": "R1",
+      "side": "top",
+      "x_mm": 12.0,
+      "y_mm": 6.0,
+      "rot_deg": 0
+    },
+    {
+      "pid": 1,
+      "gid": "g0",
+      "ref": "R2",
+      "side": "top",
+      "x_mm": 20.0,
+      "y_mm": 6.0,
+      "rot_deg": 0
+    },
+    {
+      "pid": 2,
+      "gid": "g0",
+      "ref": "R3",
+      "side": "top",
+      "x_mm": 28.0,
+      "y_mm": 6.0,
+      "rot_deg": 0
+    },
+    {
+      "pid": 3,
+      "gid": "g0",
+      "ref": "R4",
+      "side": "top",
+      "x_mm": 36.0,
+      "y_mm": 6.0,
+      "rot_deg": 0
+    },
+    {
+      "pid": 4,
+      "gid": "g1",
+      "ref": "C1",
+      "side": "top",
+      "x_mm": 12.0,
+      "y_mm": 12.0,
+      "rot_deg": 90
+    },
+    {
+      "pid": 5,
+      "gid": "g1",
+      "ref": "C2",
+      "side": "top",
+      "x_mm": 20.0,
+      "y_mm": 12.0,
+      "rot_deg": 90
+    },
+    {
+      "pid": 6,
+      "gid": "g1",
+      "ref": "C3",
+      "side": "top",
+      "x_mm": 28.0,
+      "y_mm": 12.0,
+      "rot_deg": 90
+    },
+    {
+      "pid": 7,
+      "gid": "g2",
+      "ref": "LED1",
+      "side": "top",
+      "x_mm": 14.0,
+      "y_mm": 20.0,
+      "rot_deg": 0,
+      "bbox_mm": [
+        2.0,
+        1.25
+      ]
+    },
+    {
+      "pid": 8,
+      "gid": "g2",
+      "ref": "LED2",
+      "side": "top",
+      "x_mm": 22.0,
+      "y_mm": 20.0,
+      "rot_deg": 0,
+      "bbox_mm": [
+        2.0,
+        1.25
+      ]
+    },
+    {
+      "pid": 9,
+      "gid": "g3",
+      "ref": "U1",
+      "side": "top",
+      "x_mm": 32.0,
+      "y_mm": 22.0,
+      "rot_deg": 0,
+      "bbox_mm": [
+        2.9,
+        1.6
+      ]
+    },
+    {
+      "pid": 10,
+      "gid": "g4",
+      "ref": "R5",
+      "side": "bottom",
+      "x_mm": 14.0,
+      "y_mm": 26.0,
+      "rot_deg": 0
+    },
+    {
+      "pid": 11,
+      "gid": "g4",
+      "ref": "R6",
+      "side": "bottom",
+      "x_mm": 30.0,
+      "y_mm": 26.0,
+      "rot_deg": 0
+    }
+  ],
+  "group_order_default": [
+    "g0",
+    "g1",
+    "g2",
+    "g3",
+    "g4"
+  ]
+}
