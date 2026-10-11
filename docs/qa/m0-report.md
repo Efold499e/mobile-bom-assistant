@@ -130,3 +130,24 @@ tools/validate_stj.py:14:import sys
 
 - git 提交钩子（Mimosa）提示 commit 前未做完整安全扫描（library_source/callgraph 部分覆盖）。M0 无第三方依赖、无服务端代码，不受影响；仅如实记录，不作安全结论。
 - Windows 环境下 git 提示 LF→CRLF 转换警告，属 autocrlf 行为，不影响文件内容入库。
+
+---
+
+## 自我评估补录（2026-10-11，验收后加固）
+
+验收通过后对校验器做了 13 条对抗性探针（脚本留档 `docs/qa/m0/self-review-probes.py`，输出见 run-log F 节）。首轮暴露 3 个问题，均已修复并回归：
+
+| # | 问题 | 严重度 | 修复 |
+|---|---|---|---|
+| 1 | `created_at` 缺时区偏移可通过（spec §2 要求必带时区） | spec ↔ 实现不一致 | `utcoffset() is None` → `E_TYPE` 拒绝 |
+| 2 | placement 坐标为负可通过或仅警告（spec §9 明确"坐标为负"=错误） | spec ↔ 实现不一致 | x/y 增加 `minimum=0`，负值 → `E_RANGE` |
+| 3 | spec §9 定义的 `W_LANDMARK`（地标出板框警告）未实现 | 规格清单未落地 | 已实现：地标在外接框外 → 警告（不拦） |
+| 4 | `width_mm/height_mm=0` 仅被外接框一致性间接拦截；`qty<1` 误归类 `E_TYPE` | 低（健壮性） | 显式 `>0` 检查；`qty<1` 改归 `E_RANGE`（对齐 §9 表） |
+
+修复后：13/13 探针 PASS；A–D 节正式验收全部重跑，结果逐字节不变（演示任务本来合规，不受影响）。spec 未动——是校验器向 spec 对齐，不是放松契约。`m0-stj-v1-frozen` 标签保持原位（冻结物未变），`m0-done` 前移至本加固提交。
+
+**遗留的已知局限**（记入契约疑点，不阻塞 M1）：
+- bbox 缺省表（spec 附录 C）在 check_demo.py 中有一份复刻，漂移风险靠冻结对冲；M1 webapp loader 是第三份实现，届时建议单文件常量 + 注释指回 spec。
+- rot_deg 与 KiCad 的"逆时针"约定基于文件格式文档裁定，尚无真实 `.kicad_pcb` fixture 交叉验证（M2 转换器会补上实证）。
+- JSON 重复键（同一对象内两个同名键）Python `json.load` 默认取后者，校验器不查——真实转换器（M2）与手写文件场景下风险极低，暂不处理。
+- utf-8 BOM 文件会被判 `E_JSON`；如需容忍可改 `utf-8-sig`（演示任务与 M2 产物均无 BOM，暂不改）。

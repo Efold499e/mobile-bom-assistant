@@ -60,3 +60,23 @@ tools/\validate_stj.py:14:import sys
 
 ### E. git log/tags (before report commit)
 fatal: your current branch 'master' does not have any commits yet
+
+=== F. self-review probes (2026-10-11, post-acceptance hardening) ===
+$ python docs/qa/m0/self-review-probes.py
+[PASS] rot360: rc=1 | ERROR E_RANGE: 'rot_deg'=360.0 out of range [0, 360) (at placements[0].rot_deg)
+[PASS] rot-negative: rc=1 | ERROR E_RANGE: 'rot_deg'=-90.0 below minimum 0 (at placements[0].rot_deg)
+[PASS] tz-missing: rc=1 | ERROR E_TYPE: timestamp must carry a timezone offset (ISO 8601) (at meta.created_at)
+[PASS] neg-coord: rc=1 | ERROR E_RANGE: 'x_mm'=-0.4 below minimum 0 (at placements[0].x_mm)
+[PASS] qty-zero: rc=1 | ERROR E_RANGE: qty must be >= 1, got 0 (at groups[0].qty)
+[PASS] qty-refdes-mismatch: rc=1 | ERROR E_QTY: qty=3 != len(refdes)=4 (at groups[0].qty)
+[PASS] dup-ref: rc=1 | ERROR E_DUP: duplicate ref 'R1' (at placements[1].ref)
+[PASS] order-short: rc=1 | ERROR E_QTY: group_order_default must be a permutation of all gids exactly once (at group_order_default)
+[PASS] coord-4decimals: rc=1 | ERROR E_DECIMALS: 'x_mm' has more than 3 decimal places (at placements[0].x_mm)
+[PASS] polarity-int: rc=1 | ERROR E_TYPE: polarity must be a strict boolean (at groups[0].polarity)
+[PASS] bool-pid: rc=1 | ERROR E_TYPE: pid must be an integer >= 0 (at placements[0].pid)
+[PASS] sides-incomplete: rc=1 | ERROR E_SIDES: side 'bottom' not declared in meta sides ['top'] (at placements[10].side)
+[PASS] landmark-outside-warns: rc=0 W_LANDMARK=yes
+ALL 13 PROBES PASS
+exit=0
+
+(validator re-aligned to spec after first probe run; official acceptance A-D re-verified green unchanged)

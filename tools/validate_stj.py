@@ -123,7 +123,10 @@ def check_meta(rep, meta):
     created = need_str(rep, meta, "created_at", f"{path}.created_at")
     if created is not None:
         try:
-            datetime.datetime.fromisoformat(created)
+            dt = datetime.datetime.fromisoformat(created)
+            if dt.utcoffset() is None:
+                rep.error("E_TYPE", f"{path}.created_at",
+                          "timestamp must carry a timezone offset (ISO 8601)")
         except ValueError:
             rep.error("E_TYPE", f"{path}.created_at", "not a valid ISO 8601 timestamp")
 
@@ -135,6 +138,9 @@ def check_meta(rep, meta):
         bpath = f"{path}.board"
         w = need_num(rep, board, "width_mm", f"{bpath}.width_mm", minimum=0)
         h = need_num(rep, board, "height_mm", f"{bpath}.height_mm", minimum=0)
+        for label, v in (("width_mm", w), ("height_mm", h)):
+            if v is not None and v <= 0:
+                rep.error("E_RANGE", f"{bpath}.{label}", f"'{label}' must be > 0")
         if "outline" not in board:
             rep.error("E_MISSING", bpath, "missing required field 'outline'")
         else:
@@ -167,8 +173,14 @@ def check_meta(rep, meta):
                     rep.error("E_DUP", f"{lpath}.ref", f"duplicate landmark ref '{ref}'")
                 seen_refs.add(ref)
             need_str(rep, lm, "speak", f"{lpath}.speak")
-            need_num(rep, lm, "x_mm", f"{lpath}.x_mm")
-            need_num(rep, lm, "y_mm", f"{lpath}.y_mm")
+            x = need_num(rep, lm, "x_mm", f"{lpath}.x_mm", minimum=0)
+            y = need_num(rep, lm, "y_mm", f"{lpath}.y_mm", minimum=0)
+            if bbox is not None and x is not None and y is not None:
+                bx0, by0, bx1, by1 = bbox
+                if not (bx0 <= x <= bx1 and by0 <= y <= by1):
+                    rep.warn("W_LANDMARK", f"{lpath}.x_mm/y_mm",
+                             f"landmark '{ref}' ({x}, {y}) outside board bbox "
+                             f"[{bx0}, {by0}] x [{bx1}, {by1}]")
     return bbox
 
 
@@ -230,8 +242,10 @@ def check_groups(rep, data):
         qty = None
         if "qty" not in g:
             rep.error("E_MISSING", f"{gpath}.qty", "missing required field 'qty'")
-        elif type(g["qty"]) is not int or g["qty"] < 1:
-            rep.error("E_TYPE", f"{gpath}.qty", "qty must be an integer >= 1")
+        elif type(g["qty"]) is not int:
+            rep.error("E_TYPE", f"{gpath}.qty", "qty must be an integer")
+        elif g["qty"] < 1:
+            rep.error("E_RANGE", f"{gpath}.qty", f"qty must be >= 1, got {g['qty']}")
         else:
             qty = g["qty"]
         refdes = None
@@ -296,8 +310,8 @@ def check_placements(rep, data, gids, sides_set, board_bbox):
                 rep.error("E_SIDES", f"{ppath}.side",
                           f"side '{side}' not declared in meta sides {sorted(sides_set)}")
             side_used.add(side)
-        x = need_num(rep, p, "x_mm", f"{ppath}.x_mm")
-        y = need_num(rep, p, "y_mm", f"{ppath}.y_mm")
+        x = need_num(rep, p, "x_mm", f"{ppath}.x_mm", minimum=0)
+        y = need_num(rep, p, "y_mm", f"{ppath}.y_mm", minimum=0)
         if board_bbox is not None and x is not None and y is not None:
             x0, y0, x1, y1 = board_bbox
             over = max(x0 - x, x - x1, y0 - y, y - y1)
