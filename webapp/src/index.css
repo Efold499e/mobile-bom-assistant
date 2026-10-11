@@ -1,0 +1,355 @@
+/* Global theme: dark, weld-bench friendly (plan section 5). */
+
+:root {
+  --bg: #0f1216;
+  --card: #1a2027;
+  --card-2: #232b34;
+  --fg: #e8ecf0;
+  --muted: #8a94a0;
+  --accent: #f5a623;
+  --accent-press: #ffb84d;
+  --ok: #37c871;
+  --warn: #ff5d73;
+  --line: #2c3540;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, -apple-system, 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+#app {
+  height: 100%;
+}
+
+button {
+  font-family: inherit;
+}
+
+.screen {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ---------- shared ---------- */
+
+.topbar {
+  padding: calc(8px + env(safe-area-inset-top)) 16px 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.topbar h1 {
+  font-size: 1.15rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.btn {
+  border: none;
+  border-radius: 14px;
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 1.25rem;
+  padding: 14px 18px;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.05s ease, background 0.1s ease;
+}
+
+.btn::after {
+  /* hit area beyond visual bounds (plan section 1: blind-tappable) */
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+
+.btn:active,
+.btn.pressed {
+  transform: scale(0.97);
+  background: #2d3742;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #14181c;
+  font-weight: 700;
+}
+
+.btn-primary:active,
+.btn-primary.pressed {
+  background: var(--accent-press);
+}
+
+.btn-danger {
+  color: var(--warn);
+}
+
+.btn-small {
+  font-size: 0.95rem;
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* ---------- home ---------- */
+
+.task-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.task-card .row1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.task-card .name {
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.badge {
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--card-2);
+  color: var(--muted);
+}
+
+.badge.ok {
+  background: rgba(55, 200, 113, 0.15);
+  color: var(--ok);
+}
+
+.badge.warn {
+  background: rgba(255, 93, 115, 0.15);
+  color: var(--warn);
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--card-2);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--ok);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.task-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- import ---------- */
+
+.drop {
+  border: 2px dashed var(--line);
+  border-radius: 16px;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--muted);
+}
+
+textarea#paste {
+  width: 100%;
+  min-height: 140px;
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 0.85rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.stat-cell {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px;
+  text-align: center;
+}
+
+.stat-cell .num {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.stat-cell .label {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.errors {
+  color: var(--warn);
+  font-size: 0.85rem;
+  white-space: pre-wrap;
+  background: rgba(255, 93, 115, 0.08);
+  border: 1px solid rgba(255, 93, 115, 0.3);
+  border-radius: 12px;
+  padding: 10px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+/* ---------- run (the heart; plan section 5 fixed layout) ---------- */
+
+.run-meta {
+  padding: calc(10px + env(safe-area-inset-top)) 16px 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.05rem;
+}
+
+.run-meta .idx {
+  font-weight: 700;
+}
+
+.run-progress {
+  height: 6px;
+  background: var(--card-2);
+}
+
+.run-progress .fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s ease;
+}
+
+.run-card-zone {
+  flex: 1;
+  display: flex;
+  padding: 14px 16px;
+  min-height: 0;
+}
+
+.run-card {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 16px;
+  text-align: center;
+}
+
+.run-card .value {
+  font-size: clamp(3rem, 15vw, 6.5rem);
+  font-weight: 800;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.run-card .fp {
+  font-size: clamp(1.2rem, 5vw, 1.8rem);
+  color: var(--fg);
+}
+
+.run-card .loc {
+  min-height: 1.6rem; /* orientation row reserved, blank in M1 */
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+.run-card .hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr 2fr;
+  gap: 12px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+}
+
+.controls .btn {
+  height: max(12.5dvh, 76px); /* >= 1/8 screen height (plan section 1) */
+  font-size: 1.45rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.controls .btn-primary {
+  font-size: 1.7rem;
+}
+
+/* ---------- summary ---------- */
+
+.summary {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+}
+
+.summary .big {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.summary .lines {
+  font-size: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
