@@ -1,0 +1,7 @@
+node_modules/
+dist/
+__pycache__/
+build/
+.mimosa/
+.v2c/
+.video_agent/
