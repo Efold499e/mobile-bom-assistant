@@ -5,3 +5,4 @@ build/
 .mimosa/
 .v2c/
 .video_agent/
+docs/qa/**/tmp*.png
