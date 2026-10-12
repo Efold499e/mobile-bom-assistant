@@ -1,0 +1,792 @@
+{
+  "format": "solder-task-json",
+  "version": 1,
+  "meta": {
+    "project": "electrical-trigger",
+    "source": "kicad",
+    "created_at": "2026-10-12T01:16:32+08:00",
+    "board": {
+      "width_mm": 30.0,
+      "height_mm": 30.0,
+      "outline": [
+        [
+          0.0,
+          0.0
+        ],
+        [
+          30.0,
+          0.0
+        ],
+        [
+          30.0,
+          30.0
+        ],
+        [
+          0.0,
+          30.0
+        ]
+      ]
+    },
+    "landmarks": [
+      {
+        "ref": "J2",
+        "speak": "J2 接插件",
+        "x_mm": 8.05,
+        "y_mm": 2.575
+      }
+    ]
+  },
+  "sides": [
+    "top"
+  ],
+  "groups": [
+    {
+      "gid": "g0",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "22µF",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "C1",
+        "C2"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "22微法"
+    },
+    {
+      "gid": "g1",
+      "kind": "c",
+      "footprint": "0805",
+      "value": "47µF",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "C10",
+        "C11"
+      ],
+      "footprint_speak": "0805 电容",
+      "value_speak": "47微法"
+    },
+    {
+      "gid": "g10",
+      "kind": "l",
+      "footprint": "L_Abracon_ASPI-0630LR",
+      "value": "1µH",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "L1"
+      ],
+      "footprint_speak": "L_Abracon_ASPI-0630LR 电感",
+      "value_speak": "1微亨"
+    },
+    {
+      "gid": "g11",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "28.7k",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R1"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "28.7千欧"
+    },
+    {
+      "gid": "g12",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "1k",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "R10",
+        "R11"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "1千欧"
+    },
+    {
+      "gid": "g13",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "20k",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R2"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "20千欧"
+    },
+    {
+      "gid": "g14",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "10k",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "R3",
+        "R9"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "10千欧"
+    },
+    {
+      "gid": "g15",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "100k",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "R4",
+        "R5"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "100千欧"
+    },
+    {
+      "gid": "g16",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "4.7Ω",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R6"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "4.7欧"
+    },
+    {
+      "gid": "g17",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "750k",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R7"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "750千欧"
+    },
+    {
+      "gid": "g18",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "100Ω",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R8"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "100欧"
+    },
+    {
+      "gid": "g19",
+      "kind": "r",
+      "footprint": "0603",
+      "value": "536k",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "R_FREQ1"
+      ],
+      "footprint_speak": "0603 电阻",
+      "value_speak": "536千欧"
+    },
+    {
+      "gid": "g2",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "100nF",
+      "polarity": false,
+      "qty": 2,
+      "refdes": [
+        "C3",
+        "C5"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "100纳法"
+    },
+    {
+      "gid": "g20",
+      "kind": "q",
+      "footprint": "TestPoint_Loop_D2.50mm_Drill1.85mm",
+      "value": "TestPoint",
+      "polarity": false,
+      "qty": 4,
+      "refdes": [
+        "TP1",
+        "TP2",
+        "TP3",
+        "TP4"
+      ],
+      "footprint_speak": "TestPoint_Loop_D2.50mm_Drill1.85mm 三极管"
+    },
+    {
+      "gid": "g21",
+      "kind": "ic",
+      "footprint": "QFN-16",
+      "value": "MP8760DGL-Z",
+      "polarity": true,
+      "qty": 1,
+      "refdes": [
+        "U1"
+      ],
+      "footprint_speak": "QFN-16 芯片"
+    },
+    {
+      "gid": "g3",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "10µF",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "C4"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "10微法"
+    },
+    {
+      "gid": "g4",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "33nF",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "C6"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "33纳法"
+    },
+    {
+      "gid": "g5",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "1µF",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "C7"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "1微法"
+    },
+    {
+      "gid": "g6",
+      "kind": "c",
+      "footprint": "0603",
+      "value": "220pF",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "C8"
+      ],
+      "footprint_speak": "0603 电容",
+      "value_speak": "220皮法"
+    },
+    {
+      "gid": "g7",
+      "kind": "c",
+      "footprint": "0805",
+      "value": "100nF",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "C9"
+      ],
+      "footprint_speak": "0805 电容",
+      "value_speak": "100纳法"
+    },
+    {
+      "gid": "g8",
+      "kind": "led",
+      "footprint": "0805",
+      "value": "LED",
+      "polarity": true,
+      "qty": 3,
+      "refdes": [
+        "D2",
+        "D3",
+        "D4"
+      ],
+      "footprint_speak": "0805 发光二极管"
+    },
+    {
+      "gid": "g9",
+      "kind": "conn",
+      "footprint": "PinHeader_1x02_P2.54mm_Vertical",
+      "value": "PWM IN",
+      "polarity": false,
+      "qty": 1,
+      "refdes": [
+        "J2"
+      ],
+      "footprint_speak": "PinHeader_1x02_P2.54mm_Vertical 接插件"
+    }
+  ],
+  "placements": [
+    {
+      "pid": 0,
+      "gid": "g0",
+      "ref": "C1",
+      "side": "top",
+      "x_mm": 13.566,
+      "y_mm": 22.936,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 1,
+      "gid": "g1",
+      "ref": "C10",
+      "side": "top",
+      "x_mm": 22.775,
+      "y_mm": 26.111,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.9,
+        1.45
+      ]
+    },
+    {
+      "pid": 2,
+      "gid": "g1",
+      "ref": "C11",
+      "side": "top",
+      "x_mm": 22.775,
+      "y_mm": 23.952,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.9,
+        1.45
+      ]
+    },
+    {
+      "pid": 3,
+      "gid": "g0",
+      "ref": "C2",
+      "side": "top",
+      "x_mm": 13.566,
+      "y_mm": 15.316,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 4,
+      "gid": "g2",
+      "ref": "C3",
+      "side": "top",
+      "x_mm": 13.566,
+      "y_mm": 16.84,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 5,
+      "gid": "g3",
+      "ref": "C4",
+      "side": "top",
+      "x_mm": 8.232,
+      "y_mm": 14.808,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        2.5,
+        0.9
+      ]
+    },
+    {
+      "pid": 6,
+      "gid": "g2",
+      "ref": "C5",
+      "side": "top",
+      "x_mm": 6.4,
+      "y_mm": 22.425,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        2.5,
+        0.9
+      ]
+    },
+    {
+      "pid": 7,
+      "gid": "g4",
+      "ref": "C6",
+      "side": "top",
+      "x_mm": 8.994,
+      "y_mm": 20.142,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 8,
+      "gid": "g5",
+      "ref": "C7",
+      "side": "top",
+      "x_mm": 9.75,
+      "y_mm": 22.5,
+      "rot_deg": 270.0,
+      "bbox_mm": [
+        2.5,
+        0.9
+      ]
+    },
+    {
+      "pid": 9,
+      "gid": "g6",
+      "ref": "C8",
+      "side": "top",
+      "x_mm": 3.66,
+      "y_mm": 19.38,
+      "rot_deg": 270.0,
+      "bbox_mm": [
+        2.5,
+        0.9
+      ]
+    },
+    {
+      "pid": 10,
+      "gid": "g7",
+      "ref": "C9",
+      "side": "top",
+      "x_mm": 22.775,
+      "y_mm": 28.27,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.9,
+        1.45
+      ]
+    },
+    {
+      "pid": 11,
+      "gid": "g8",
+      "ref": "D2",
+      "side": "top",
+      "x_mm": 21.186,
+      "y_mm": 10.474,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.85,
+        1.4
+      ]
+    },
+    {
+      "pid": 12,
+      "gid": "g8",
+      "ref": "D3",
+      "side": "top",
+      "x_mm": 21.186,
+      "y_mm": 7.434,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.85,
+        1.4
+      ]
+    },
+    {
+      "pid": 13,
+      "gid": "g8",
+      "ref": "D4",
+      "side": "top",
+      "x_mm": 21.186,
+      "y_mm": 4.394,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.85,
+        1.4
+      ]
+    },
+    {
+      "pid": 14,
+      "gid": "g9",
+      "ref": "J2",
+      "side": "top",
+      "x_mm": 8.05,
+      "y_mm": 2.575,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        1.7,
+        4.24
+      ]
+    },
+    {
+      "pid": 15,
+      "gid": "g10",
+      "ref": "L1",
+      "side": "top",
+      "x_mm": 21.694,
+      "y_mm": 19.126,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        8.4,
+        3.4
+      ]
+    },
+    {
+      "pid": 16,
+      "gid": "g11",
+      "ref": "R1",
+      "side": "top",
+      "x_mm": 8.232,
+      "y_mm": 17.856,
+      "rot_deg": 270.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 17,
+      "gid": "g12",
+      "ref": "R10",
+      "side": "top",
+      "x_mm": 16.106,
+      "y_mm": 7.412,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 18,
+      "gid": "g12",
+      "ref": "R11",
+      "side": "top",
+      "x_mm": 16.106,
+      "y_mm": 4.902,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 19,
+      "gid": "g13",
+      "ref": "R2",
+      "side": "top",
+      "x_mm": 9.756,
+      "y_mm": 17.856,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 20,
+      "gid": "g14",
+      "ref": "R3",
+      "side": "top",
+      "x_mm": 5.184,
+      "y_mm": 14.808,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 21,
+      "gid": "g15",
+      "ref": "R4",
+      "side": "top",
+      "x_mm": 6.708,
+      "y_mm": 14.808,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 22,
+      "gid": "g15",
+      "ref": "R5",
+      "side": "top",
+      "x_mm": 8.182,
+      "y_mm": 23.262,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 23,
+      "gid": "g16",
+      "ref": "R6",
+      "side": "top",
+      "x_mm": 8.925,
+      "y_mm": 25.548,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 24,
+      "gid": "g17",
+      "ref": "R7",
+      "side": "top",
+      "x_mm": 5.184,
+      "y_mm": 19.38,
+      "rot_deg": 270.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 25,
+      "gid": "g18",
+      "ref": "R8",
+      "side": "top",
+      "x_mm": 6.708,
+      "y_mm": 17.856,
+      "rot_deg": 90.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 26,
+      "gid": "g14",
+      "ref": "R9",
+      "side": "top",
+      "x_mm": 16.106,
+      "y_mm": 9.922,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        2.45,
+        0.95
+      ]
+    },
+    {
+      "pid": 27,
+      "gid": "g19",
+      "ref": "R_FREQ1",
+      "side": "top",
+      "x_mm": 9.756,
+      "y_mm": 14.808,
+      "rot_deg": 270.0,
+      "bbox_mm": [
+        2.6,
+        0.8
+      ]
+    },
+    {
+      "pid": 28,
+      "gid": "g20",
+      "ref": "TP1",
+      "side": "top",
+      "x_mm": 2.41,
+      "y_mm": 8.576,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        3.4,
+        3.4
+      ]
+    },
+    {
+      "pid": 29,
+      "gid": "g20",
+      "ref": "TP2",
+      "side": "top",
+      "x_mm": 2.41,
+      "y_mm": 3.126,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        3.4,
+        3.4
+      ]
+    },
+    {
+      "pid": 30,
+      "gid": "g20",
+      "ref": "TP3",
+      "side": "top",
+      "x_mm": 27.282,
+      "y_mm": 8.574,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        3.4,
+        3.4
+      ]
+    },
+    {
+      "pid": 31,
+      "gid": "g20",
+      "ref": "TP4",
+      "side": "top",
+      "x_mm": 27.282,
+      "y_mm": 3.124,
+      "rot_deg": 180.0,
+      "bbox_mm": [
+        3.4,
+        3.4
+      ]
+    },
+    {
+      "pid": 32,
+      "gid": "g21",
+      "ref": "U1",
+      "side": "top",
+      "x_mm": 13.204,
+      "y_mm": 19.888,
+      "rot_deg": 0.0,
+      "bbox_mm": [
+        2.95,
+        4.6
+      ]
+    }
+  ],
+  "group_order_default": [
+    "g11",
+    "g13",
+    "g15",
+    "g17",
+    "g18",
+    "g19",
+    "g3",
+    "g5",
+    "g6",
+    "g0",
+    "g12",
+    "g14",
+    "g16",
+    "g2",
+    "g4",
+    "g8",
+    "g1",
+    "g7",
+    "g21",
+    "g10",
+    "g9",
+    "g20"
+  ]
+}

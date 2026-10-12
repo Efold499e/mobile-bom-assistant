@@ -20,7 +20,10 @@ export interface Validation {
 const isNum = (v: unknown): v is number =>
   (typeof v === 'number' && Number.isFinite(v));
 const isInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v);
-const dec3 = (v: number) => Math.round(v * 1000) === v * 1000;
+// At most 3 decimal places. Tolerant compare: a decimal-clean value like 8.05
+// has v*1000 === 8050.000000000001 in IEEE754, so an exact check would reject
+// legitimate coordinates (found on the first real-board import, M5).
+const dec3 = (v: number) => Math.abs(v * 1000 - Math.round(v * 1000)) < 1e-6;
 
 class Rep {
   errors: string[] = [];

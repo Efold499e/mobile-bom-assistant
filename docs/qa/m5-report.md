@@ -1,0 +1,60 @@
+# M5 阶段报告 —— 真板全链路（转换 + 安卓模拟器演练）
+
+> 执行日期：2026-10-11/12。执行 prompt：`docs/prompts/m5.md` + 用户指示「M5 用安卓虚拟机」。
+> 结论先行：**两块真板全链路在安卓模拟器上走通**（转换→导入→报菜名→标定→焊接交互→收工）；摩擦回填 2 个真 bug 修复 + 1 个真机风险预防，全部带回归。**`m5-done` / `v1.0` tag 未打**——门禁中的「真板实焊 ×2」「照袋人工数数」「真机清单清零」需要实机与实焊，待 Efold 执行（见 §4）。
+
+## 1. 真板文件与转换（门禁 #1，达成）
+
+| 板 | 来源文件 | 产物 | 统计 |
+|---|---|---|---|
+| boardA electrical-trigger（MP8760 电点火板） | `electrical-trigger.kicad_pcb`（KiCad 10，E 盘项目归档） | `examples/boardA.stj.json` | 33 颗 / 22 组 / 极性 4 / 单面 / 地标 J2 接插件 |
+| boardB 2dgimbal v1.3 | `2dgimbal_v1.3_bom.csv` + `2dgimbal_v1.3_positions.csv`（嘉立创生产导出） | `examples/boardB.stj.json` | 108 颗 / 23 组 / 极性 12 / 单面 / 地标 3 |
+
+`python tools/validate_stj.py` 两侧均退出 0（仅 W_SPEAK/W_BBOX 类提示，符合设计回退）。统计与 `--check` 输出一致；「照元件袋人工数数」核对留待实焊（F 清单 §4）。
+
+真实样例已脱敏入库：`converter/tests/fixtures-real/`（KiCad 头+边框+5 个真实器件块；JLC BOM/坐标对裁剪版，含 `C*1` 野字符位号），`converter/tests/test_real.py` 2 例防回归（源、坐标翻转、dec3 全净、位号存活）。**converter 43/43、webapp 66/66 全绿。**
+
+## 2. 安卓虚拟机（用户指定路径，达成）
+
+Windows 10 无自带安卓虚拟机（WSA 仅 Win11；本机 Hyper-V 关闭、无第三方模拟器）。采用官方 Android SDK 路线（dl.google.com 直连可用）：
+
+- `D:\AndroidSdk`：cmdline-tools + platform-tools + emulator + AEHD 驱动 + `system-images;android-34;google_apis;x86_64`；JDK 17（Microsoft OpenJDK）。
+- AEHD 因宿主 hypervisor（VBS）占用无法启动 → **WHPX 路径可用**（`emulator -accel-check` 确认），无需重启。
+- AVD `weld-test`（Pixel 6 profile, API 34）无窗口启动，Chrome 内置；`adb reverse tcp:4173` 连接宿主 `vite preview --host 127.0.0.1`（见 F4/F5）。
+- PWA 在模拟器 Chrome 中安装成功（install banner → Install）。
+
+## 3. 真板全流程演练证据（`docs/qa/m5/`）
+
+| 截图 | 证明 |
+|---|---|
+| `emu-03-tts-check-android.png` | 设置屏 TTS 体检：Android 上 64 个语音、中文 4 个 |
+| `emu-04-import.png` → `emu-05-boardA-stats.png` | 文件选择器导入 boardA；统计 33/22/4/1 与 `--check` 一致 |
+| `emu-06-home-boardA.png` | 首页双任务并存 |
+| `emu-07-menu-boardA.png` | 报菜名屏渲染全部 22 组真件（28.7千欧…MP8760DGL-Z QFN、TestPoint×4） |
+| `emu-08-calibrate-boardA.png` | 标定屏：真板 33 点位图 + J2 地标高亮，旋转生效 |
+| `emu-09-loop-boardA.png` | 焊接循环：第 1/33 颗 10μF，「板子右中 · 靠J2 接插件」+ 实时缩略图 |
+| `emu-10/11-rework/undo` | 短按返工、长按撤销（语义同 M1，UI 为 M3/M4 版） |
+| `emu-12-skipped.png` | 上滑跳过后指针前进、方位词随位置变化（右中→右上） |
+| 批量询问 | 第 30 颗 TestPoint（qty=4）触发「4 颗 TestPoint，一起焊？」→ 同意 → 提示音流 |
+| `emu-13-finish-list.png`（总结版） | 全板焊完：33/33、用时 5 分钟、正面 33/33 ✓ |
+| `emu-14-skip-p1.png` | touch-action 修复后受控复验：慢速上滑指针恰好 +1 |
+
+桌面 IAB 侧（同日）M4 场景 b 已证明「跳过 → 收尾清单 → 补焊 → 全清」全链（截图 `docs/qa/m4/`），skip 标记/虚线/收尾清单渲染的证据在案。
+
+## 4. 与 m5.md 门禁的差距（诚实清单）
+
+| 门禁项 | 状态 |
+|---|---|
+| 真实文件 + 转换 + 校验 + `--check` | ✅ 完成（§1） |
+| 真板实焊 ×2 并录屏（含指定交互） | ⛔ 待 Efold 实焊——模拟器已全交互演练，焊接本体需手 |
+| `--check` 对元件袋人工数数 | ⛔ 待实焊前核对（数字已列 `docs/m5-friction.md` §4） |
+| 真机清单清零（m3/m4 device.md） | ⛔ 大部分项已在模拟器验证（TTS/手势/标定/镜像），剩余项需真机（横竖屏锁定手感、强光对比度等） |
+| 手机 PWA 更新到 M4 构建 | ✅ 以模拟器内安装等效达成；实体手机待装 |
+| `m5-done` / `v1.0` tag | ⛔ 未打（按门禁不满足不打） |
+
+## 5. 摩擦修复汇总（详见 `docs/m5-friction.md`）
+
+1. **F1 dec3 浮点缺陷**（webapp loader 拒收合法真值）——修复 + vitest 2 例 + 真样例全量断言。
+2. **F2 touch-action 缺失**（上滑跳过可被浏览器吞，真机风险）——修复 + 模拟器受控复验。
+3. **F3 IDB 升级阻塞**（多页打开假死）——修复 + 模拟器复验。
+4. F4 JLC 野字符位号（已兼容，金样固化）、F5 测试基建经验（adb 注入节奏）留档。

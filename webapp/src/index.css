@@ -286,6 +286,10 @@ textarea#paste {
   gap: 14px;
   padding: 16px;
   text-align: center;
+  /* the card owns its gestures (tap = replay, swipe up = skip): without this
+   * Chrome claims vertical drags for scrolling and pointercancel eats the
+   * skip (found on the Android emulator, M5) */
+  touch-action: none;
 }
 
 .run-card .value {
