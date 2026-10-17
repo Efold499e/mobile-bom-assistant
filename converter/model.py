@@ -32,6 +32,10 @@ class Part:
     bbox: tuple | None = None  # (w, h) mm, None -> omitted, consumer estimates
     mount: str = "smd"  # smd / tht
     excluded: bool = False  # set by parsers for explicit excludes (attr board_only...)
+    # Pad geometry in the FOOTPRINT-LOCAL frame (placement rotation NOT applied;
+    # the renderer rotates). List of {x, y, w, h, shape} in mm. Sources that
+    # carry no geometry (JLC CSV pairs) leave this None.
+    pads: list | None = None
 
 
 @dataclass
@@ -150,6 +154,17 @@ def build_task(parts: list, outline_src: list, source: str, project: str, create
         }
         if p.bbox:
             placement["bbox_mm"] = [round(p.bbox[0], 3), round(p.bbox[1], 3)]
+        if p.pads:
+            placement["pads"] = [
+                {
+                    "x_mm": round(pd["x"], 3) + 0.0,  # +0.0 normalizes -0.0
+                    "y_mm": round(pd["y"], 3) + 0.0,
+                    "w_mm": round(pd["w"], 3) + 0.0,
+                    "h_mm": round(pd["h"], 3) + 0.0,
+                    "shape": pd["shape"],
+                }
+                for pd in p.pads
+            ]
         placement["_kind"] = kind
         placement["_fp_name"] = footprint_display_name(p.footprint)
         placement["_value"] = norm.value

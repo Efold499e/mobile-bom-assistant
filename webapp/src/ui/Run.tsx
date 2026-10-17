@@ -90,7 +90,6 @@ export function RunScreen(props: {
   const makeupRef = useRef<RunnerState | null>(null);
   const wakeLock = useRef(new WakeLockHolder());
   const taskRef = useRef<StjTask | null>(null);
-  const placementsById = useRef(new Map<number, { x_mm: number; y_mm: number }>());
   const startedRef = useRef(false);
   const batchRef = useRef(new BatchTracker());
   const pendingAskRef = useRef<string | null>(null);
@@ -106,7 +105,6 @@ export function RunScreen(props: {
       const t = rec.task;
       taskRef.current = t;
       setTask(t);
-      placementsById.current = new Map(t.placements.map((p) => [p.pid, p] as const));
       const planned = planQueue(t, rec.pickOrder);
       queue.current = planned;
       const order = planned.map((u) => u.pid);
@@ -135,6 +133,7 @@ export function RunScreen(props: {
       const st = await getSettings();
       if (cancelled) return;
       getSpeaker().setRate(st.rate);
+      getSpeaker().setVoice(st.voiceName ?? null);
       batchRef.current.setThreshold(st.batchThreshold);
       setMenuPicks(rec.pickOrder);
       if (rec.calib) {
@@ -188,9 +187,12 @@ export function RunScreen(props: {
     const unit = queue.current[idx];
     const group = unit && groupOf(unit.gid);
     if (!group) return;
-    const p = placementsById.current.get(pid);
+    const p = t.placements.find((pl) => pl.pid === pid);
+    // AI-baked hint (conversion-time DeepSeek) wins; rule-based nine-grid is
+    // the offline fallback -- both are already user-frame worded
     const loc =
-      p && viewInfoRef.current.deg !== null
+      p?.loc_speak ??
+      (p && viewInfoRef.current.deg !== null
         ? (locationPhrase(
             p.x_mm,
             p.y_mm,
@@ -198,7 +200,7 @@ export function RunScreen(props: {
             flipFor(unit.side, viewInfoRef.current.flip),
             viewInfoRef.current.deg,
           ) ?? undefined)
-        : undefined;
+        : undefined);
     getSpeaker().say(unitSentence({ index: idx + 1, total: s.order.length, group, loc }));
   };
 
@@ -492,16 +494,17 @@ export function RunScreen(props: {
   const total = state.order.length;
   const unit = state.pointer >= 0 ? queue.current[state.pointer] : null;
   const group = unit ? groupOf(unit.gid) : undefined;
-  const placement = unit ? placementsById.current.get(unit.pid) : undefined;
+  const placement = unit ? task.placements.find((pl) => pl.pid === unit.pid) : undefined;
   const doneCount = state.order.filter((pid) => state.statuses[pid] === 'done').length;
   const viewSide: Side = unit?.side ?? 'top';
   const batchCount = unit && batchRef.current.isBatch(unit.gid)
     ? batchCountOf(queue.current, state.pointer)
     : null;
   const locCard =
-    placement && effCal !== null && task
+    placement?.loc_speak ??
+    (placement && effCal !== null && task
       ? locationCardText(placement.x_mm, placement.y_mm, task, flipFor(unit!.side, calibFlip), effCal)
-      : null;
+      : null);
   const inMakeup = makeupRef.current !== null;
 
   const mapCommon = {

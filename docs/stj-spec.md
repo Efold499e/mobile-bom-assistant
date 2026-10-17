@@ -195,3 +195,28 @@ STATS placements=12 groups=5 polarity=3 sides=2 landmarks=2
 | SOIC-8 | 4.9 × 3.9 |
 | SOIC-16 | 4.9 × 6.4 |
 | （其他） | 1.0 × 1.0 |
+
+## 附录 D：增量字段（v1 冻结后的可忽略扩展，2026-10-12 M5 用户需求）
+
+冻结规则允许「loader 可忽略的增量字段」：旧消费端遇到这些字段直接忽略，行为不变。以下字段由 M2 转换器产出，webapp loader / Python 校验器同步支持（字段级校验，出错拒绝）。
+
+### D.1 `placements[].pads`（真实焊盘几何，渲染用）
+
+```json
+{ "pads": [ { "x_mm": -0.775, "y_mm": 0.0, "w_mm": 0.9, "h_mm": 0.95, "shape": "rect" } ] }
+```
+
+- 坐标相对**器件中心**，且在器件**自身局部坐标系**（`rot_deg` 由渲染端施加）。
+- `shape` ∈ `rect | circle`（roundrect/oval 归一为 `rect`，tht 圆孔归一为 `circle`）。
+- 来源：KiCad `footprint.pads`、iBOM `footprints[].pads`；嘉立创 CSV 对无几何 → 不产出（渲染端回退到 bbox 真比例绘制）。
+
+### D.2 `placements[].loc_speak`（AI 位置描述，播报用）
+
+```json
+{ "loc_speak": "MP8760 左下侧" }
+```
+
+- 转换器 `--ai-loc` 调 DeepSeek 预计算（遵循 §4「语言原子 PC 端预计算」原则），≤24 字符；无 key/无网络时省略，消费端回退内置九宫格+地标播报。
+- webapp 播报与卡片第三行优先取该字段。
+
+同步改动：`converter/`（parsers/model/ai_loc）、`webapp/src/loader/{types,validate}.ts`、金样 `kicad_min` 重生成（diff 仅增量）。

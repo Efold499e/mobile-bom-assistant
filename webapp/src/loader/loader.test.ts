@@ -53,6 +53,33 @@ describe('dec3 tolerant compare (M5 friction: real-board import)', () => {
   });
 });
 
+describe('incremental fields (spec appendix D, M5)', () => {
+  const mkWith = (placementExtra: string) => `{
+    "format": "solder-task-json", "version": 1,
+    "meta": { "project": "fp", "source": "kicad", "created_at": "2026-10-12T00:00:00+08:00",
+      "board": { "width_mm": 30, "height_mm": 20, "outline": [[0,0],[30,0],[30,20],[0,20]] },
+      "landmarks": [] },
+    "sides": ["top"],
+    "groups": [{ "gid": "g0", "kind": "r", "footprint": "0603", "value": "10k", "polarity": false, "qty": 1, "refdes": ["R1"] }],
+    "placements": [{ "pid": 0, "gid": "g0", "ref": "R1", "side": "top", "x_mm": 12, "y_mm": 8, "rot_deg": 0, "bbox_mm": [1.6, 0.8]${placementExtra} }],
+    "group_order_default": ["g0"] }`;
+  it('accepts pads geometry + loc_speak (AI hint)', () => {
+    const r = parseStjText(mkWith(`,
+      "pads": [
+        { "x_mm": -0.775, "y_mm": 0.0, "w_mm": 0.9, "h_mm": 0.95, "shape": "rect" },
+        { "x_mm": 0.775, "y_mm": 0.0, "w_mm": 0.9, "h_mm": 0.95, "shape": "circle" }
+      ],
+      "loc_speak": "MP8760 左下侧"`));
+    expect(r.ok).toBe(true);
+    expect(r.errors).toEqual([]);
+  });
+  it('rejects malformed pads (bad shape / non-positive size) and long loc_speak', () => {
+    expect(parseStjText(mkWith(`, "pads": [{ "x_mm": 0, "y_mm": 0, "w_mm": 0, "h_mm": 1, "shape": "rect" }]`)).ok).toBe(false);
+    expect(parseStjText(mkWith(`, "pads": [{ "x_mm": 0, "y_mm": 0, "w_mm": 1, "h_mm": 1, "shape": "square" }]`)).ok).toBe(false);
+    expect(parseStjText(mkWith(`, "loc_speak": "${'x'.repeat(41)}"`)).ok).toBe(false);
+  });
+});
+
 describe('rejects bad STJ (M0 negative scenarios, TS ports)', () => {
   const clone = () => JSON.parse(demoText) as Record<string, unknown>;
 

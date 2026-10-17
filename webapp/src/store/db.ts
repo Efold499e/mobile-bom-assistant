@@ -13,10 +13,11 @@ const STORE = 'tasks';
 const SETTINGS_STORE = 'settings';
 
 /** App settings (M4): TTS rate 0.7-1.2 (default 0.9), batch threshold
- * (default 4, null = batch off). Persisted once per browser in its own store. */
+ * (default 4, null = batch off). voiceName pins a TTS voice (M5 feedback). */
 export interface AppSettings {
   rate: number;
   batchThreshold: number | null;
+  voiceName?: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { rate: 0.9, batchThreshold: 4 };
@@ -26,10 +27,12 @@ export function normalizeSettings(raw: unknown): AppSettings {
   const o = (typeof raw === 'object' && raw !== null ? raw : {}) as Record<string, unknown>;
   const rate = typeof o['rate'] === 'number' && Number.isFinite(o['rate']) ? o['rate'] : DEFAULT_SETTINGS.rate;
   const th = o['batchThreshold'];
-  return {
+  const s: AppSettings = {
     rate: Math.min(1.2, Math.max(0.7, Math.round(rate * 100) / 100)),
     batchThreshold: th === null ? null : typeof th === 'number' && Number.isInteger(th) && th >= 2 && th <= 12 ? th : DEFAULT_SETTINGS.batchThreshold,
   };
+  if (typeof o['voiceName'] === 'string' && o['voiceName']) s.voiceName = o['voiceName'];
+  return s;
 }
 
 /** Orientation calibration (plan section 7), persisted per task so a second

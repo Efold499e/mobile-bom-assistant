@@ -22,6 +22,7 @@ if str(_HERE) not in sys.path:
     sys.path.insert(0, str(_HERE))
 
 from model import build_task  # noqa: E402
+from ai_loc import add_ai_locations  # noqa: E402
 from parsers import ibom as ibom_parser  # noqa: E402
 from parsers import jlc as jlc_parser  # noqa: E402
 from parsers import kicad as kicad_parser  # noqa: E402
@@ -91,6 +92,10 @@ def main(argv=None) -> int:
     ap.add_argument("--name", help="project name (default: input file stem)")
     ap.add_argument("--check", action="store_true", help="print the sanity sheet")
     ap.add_argument("--now", dest="now", help="ISO created_at override (tests)")
+    ap.add_argument("--ai-loc", action="store_true",
+                    help="precompute spoken location hints with DeepSeek "
+                         "(needs DEEPSEEK_API_KEY env or --api-key; offline fallback)")
+    ap.add_argument("--api-key", help="DeepSeek API key (else DEEPSEEK_API_KEY env)")
     args = ap.parse_args(argv)
 
     input_path = Path(args.input)
@@ -107,6 +112,16 @@ def main(argv=None) -> int:
     except (ValueError, KeyError, json.JSONDecodeError) as e:
         print(f"conversion failed: {e}", file=sys.stderr)
         return 2
+
+    if args.ai_loc:
+        import os
+        key = args.api_key or os.environ.get("DEEPSEEK_API_KEY") or ""
+        if not key:
+            print("ai-loc: no API key (--api-key or DEEPSEEK_API_KEY), skipping",
+                  file=sys.stderr)
+        else:
+            filled = add_ai_locations(task, key)
+            print(f"ai-loc: {filled}/{len(task['placements'])} location hints baked in")
 
     stats = (f"bom2task: {len(task['placements'])} placements / {len(task['groups'])} groups / "
              f"{sum(g['qty'] for g in task['groups'] if g['polarity'])} polarity / "

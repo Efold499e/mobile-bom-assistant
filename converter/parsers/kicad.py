@@ -260,6 +260,42 @@ def _footprint_bbox(fp_node, fx, fy, rot):
     return (round(max(xs) - min(xs), 3), round(max(ys) - min(ys), 3))
 
 
+def _footprint_pads(fp_node):
+    """Pad geometry in the footprint-LOCAL frame (placement rotation NOT
+    applied -- the renderer rotates). Pad-level rotation is folded in by
+    rotating the pad center and swapping w/h for ~90/270° pads. NPTH and
+    mechanical pads are skipped."""
+    pads = []
+    for pad in _children(fp_node, "pad"):
+        ptype = pad[2] if len(pad) > 2 else "smd"
+        if ptype in ("np_thru_hole", "connect"):
+            continue
+        at = _child(pad, "at")
+        size = _child(pad, "size")
+        shape_node = _child(pad, "shape")
+        if at is None or size is None:
+            continue
+        px, py = _num(at, 1), _num(at, 2)
+        if len(at) > 3:
+            pr = math.radians(_num(at, 3))
+            px, py = px * math.cos(pr) + py * math.sin(pr), -px * math.sin(pr) + py * math.cos(pr)
+            quarter = abs(math.sin(pr)) > 0.7
+        else:
+            quarter = False
+        w, h = _num(size, 1), _num(size, 2)
+        if quarter:
+            w, h = h, w
+        shape = (shape_node[1] if shape_node and len(shape_node) > 1 else "rect").lower()
+        if shape in ("roundrect", "oval", "round") or ptype == "tht":
+            # round/oval THT and roundrect SMD read best as circles/rounded at
+            # render size; keep the two shapes the renderer knows
+            shape = "circle" if shape in ("round", "circle") or ptype == "tht" else "rect"
+        else:
+            shape = "rect"
+        pads.append({"x": px, "y": py, "w": w, "h": h, "shape": shape})
+    return pads or None
+
+
 def parse_kicad(text: str):
     """Parse .kicad_pcb text -> (parts, outline_src). y-down source frame."""
     tree = parse_sexpr(text)
@@ -277,6 +313,7 @@ def parse_kicad(text: str):
             ref=ref, value=value, footprint=fp[1] if len(fp) > 1 else "",
             side=side, x=fx, y=fy, rot=rot, bbox=bbox, mount=mount,
             excluded=_is_excluded_attr(fp),
+            pads=_footprint_pads(fp),
         ))
     outline = _largest_loop(_collect_edge_segments(tree))
     return parts, outline

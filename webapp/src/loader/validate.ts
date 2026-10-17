@@ -380,6 +380,37 @@ export function validateStj(data: unknown): Validation {
       } else {
         rep.warn('W_BBOX', `${p}.bbox_mm`, 'missing; consumer falls back to footprint default table');
       }
+      // incremental fields (spec appendix D): pads geometry + loc_speak hint
+      if ('pads' in p0) {
+        const pads = p0['pads'];
+        if (!Array.isArray(pads)) {
+          rep.err('E_TYPE', `${p}.pads`, 'pads must be an array');
+        } else {
+          pads.forEach((pd, j) => {
+            const pp = `${p}.pads[${j}]`;
+            if (!obj(pd)) {
+              rep.err('E_TYPE', pp, 'pad must be an object');
+              return;
+            }
+            for (const [key, lo] of [['x_mm', null], ['y_mm', null], ['w_mm', 0], ['h_mm', 0]] as const) {
+              if (!(key in pd)) {
+                rep.err('E_MISSING', `${pp}.${key}`, `missing required pad field '${key}'`);
+              } else if (!isNum(pd[key])) {
+                rep.err('E_TYPE', `${pp}.${key}`, `'${key}' must be a finite number`);
+              } else {
+                if (!dec3(pd[key])) rep.err('E_DECIMALS', `${pp}.${key}`, 'more than 3 decimal places');
+                if (lo !== null && pd[key] <= 0) rep.err('E_RANGE', `${pp}.${key}`, 'pad size must be > 0');
+              }
+            }
+            if ('shape' in pd && pd['shape'] !== 'rect' && pd['shape'] !== 'circle') {
+              rep.err('E_ENUM', `${pp}.shape`, `'${pd['shape']}' not in rect/circle`);
+            }
+          });
+        }
+      }
+      if ('loc_speak' in p0 && (typeof p0['loc_speak'] !== 'string' || p0['loc_speak'].length > 40)) {
+        rep.err('E_TYPE', `${p}.loc_speak`, 'loc_speak must be a string of at most 40 chars');
+      }
     });
     if (sidesSet && sideUsed.size > 0) {
       const a = [...sidesSet].sort();

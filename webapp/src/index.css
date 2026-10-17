@@ -639,6 +639,16 @@ textarea#paste {
   align-self: flex-start;
 }
 
+.voice-select {
+  background: var(--card-2);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 0.95rem;
+  max-width: 100%;
+}
+
 .settings-saved {
   color: var(--ok);
   text-align: center;

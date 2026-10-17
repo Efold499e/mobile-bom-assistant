@@ -13,14 +13,20 @@ const TEST_SENTENCE = '语音体检。0603 电阻，10千欧，板子左上，�
 export function SettingsScreen(props: { onDone(): void }) {
   const [s, setS] = useState<AppSettings | null>(null);
   const [voices, setVoices] = useState<{ name: string; lang: string }[]>([]);
+  const [, setVoiceVer] = useState(0);
   const [savedFlash, setSavedFlash] = useState(false);
 
   useEffect(() => {
-    void getSettings().then(setS);
+    void getSettings().then((loaded) => {
+      setS(loaded);
+      getSpeaker().setRate(loaded.rate);
+      getSpeaker().setVoice(loaded.voiceName ?? null);
+    });
     const synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
     const load = () => {
       if (!synth) return;
       setVoices(synth.getVoices().map((v) => ({ name: v.name, lang: v.lang })));
+      setVoiceVer((x) => x + 1); // re-render the picker when voices arrive
     };
     load();
     synth?.addEventListener?.('voiceschanged', load);
@@ -32,6 +38,7 @@ export function SettingsScreen(props: { onDone(): void }) {
     const next = { ...s, ...patch };
     setS(next);
     if (patch.rate !== undefined) getSpeaker().setRate(next.rate);
+    if (patch.voiceName !== undefined) getSpeaker().setVoice(next.voiceName ?? null);
     void saveSettings(next).then(() => {
       setSavedFlash(true);
       window.setTimeout(() => setSavedFlash(false), 900);
@@ -85,6 +92,37 @@ export function SettingsScreen(props: { onDone(): void }) {
               </div>
               <div class="muted settings-note">
                 进入数量达到阈值的组时询问「一起焊？」；关闭则全程逐颗播报。
+              </div>
+            </section>
+
+            <section class="settings-card">
+              <h2>语音音色</h2>
+              <select
+                class="voice-select"
+                data-testid="voice-select"
+                value={s.voiceName ?? ''}
+                onChange={(e) => update({ voiceName: e.currentTarget.value || undefined })}
+              >
+                <option value="">自动（优先最自然的中文音色）</option>
+                {(() => {
+                  const vs = getSpeaker().listVoices();
+                  const zh = vs.filter((v) => v.lang.toLowerCase().startsWith('zh'));
+                  const rest = vs.filter((v) => !v.lang.toLowerCase().startsWith('zh'));
+                  const opt = (v: { name: string; lang: string }, i: number) => (
+                    <option key={i} value={v.name}>{v.name}（{v.lang}）</option>
+                  );
+                  return [
+                    zh.length > 0 && <optgroup key="zh" label="中文">{zh.map(opt)}</optgroup>,
+                    rest.length > 0 && <optgroup key="rest" label="其他">{rest.map(opt)}</optgroup>,
+                  ];
+                })()}
+              </select>
+              <div class="muted settings-note">
+                当前自动选择：{(() => {
+                  const vs = getSpeaker().listVoices();
+                  const zh = vs.filter((v) => v.lang.toLowerCase().startsWith('zh'));
+                  return zh.length > 0 ? zh[0].name : '无中文语音';
+                })()}
               </div>
             </section>
 

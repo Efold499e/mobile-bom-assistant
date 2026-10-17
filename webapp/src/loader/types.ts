@@ -44,6 +44,17 @@ export interface StjGroup {
   refdes: string[];
 }
 
+/** Incremental field (spec appendix D): footprint pad geometry relative to
+ * the placement center, in the placement's LOCAL frame (rot_deg applies at
+ * render). Emitted by the KiCad/iBOM parsers; JLC CSV has no geometry. */
+export interface StjPad {
+  x_mm: number;
+  y_mm: number;
+  w_mm: number;
+  h_mm: number;
+  shape: 'rect' | 'circle';
+}
+
 export interface StjPlacement {
   pid: number;
   gid: string;
@@ -53,6 +64,10 @@ export interface StjPlacement {
   y_mm: number;
   rot_deg: number;
   bbox_mm?: [number, number];
+  pads?: StjPad[];
+  /** Incremental field (spec appendix D): AI/baked spoken location hint,
+   * precomputed at conversion time (e.g. 「MP8760 左下侧」). */
+  loc_speak?: string;
 }
 
 export interface StjTask {

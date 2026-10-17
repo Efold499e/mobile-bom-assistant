@@ -13,6 +13,31 @@ from pathlib import Path
 from model import Part, TOP, BOTTOM
 
 
+def _footprint_pads(fp):
+    """pcbdata pads are footprint-local mm: {"pos": [x, y], "size": [w, h],
+    "shape": "rect|circle|oval", "angle": deg}. Fold angle into w/h like the
+    KiCad parser does."""
+    pads = []
+    for pad in fp.get("pads") or []:
+        if not isinstance(pad, dict):
+            continue
+        pos = pad.get("pos") or [0.0, 0.0]
+        size = pad.get("size") or [0.0, 0.0]
+        if not isinstance(size, (list, tuple)):
+            size = [float(size), float(size)]
+        w, h = float(size[0]), float(size[1])
+        angle = float(pad.get("angle", 0.0) or 0.0)
+        if abs(angle % 180.0 - 90.0) < 45:
+            w, h = h, w
+        shape = str(pad.get("shape", "rect")).lower()
+        pads.append({
+            "x": float(pos[0]), "y": float(pos[1]),
+            "w": w, "h": h,
+            "shape": "circle" if shape in ("circle", "round") else "rect",
+        })
+    return pads or None
+
+
 def parse_ibom(text: str):
     data = json.loads(text)
     value_by_ref = {}
@@ -56,6 +81,7 @@ def parse_ibom(text: str):
             y=float(cy),
             rot=float(fp.get("rotation", 0.0) or 0.0),
             bbox=size,
+            pads=_footprint_pads(fp),
         ))
 
     outline = [list(pt) for pt in (data.get("pcb", {}).get("outline") or [])]

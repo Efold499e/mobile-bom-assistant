@@ -26,11 +26,13 @@ export type MapMode = 'thumb' | 'full' | 'mini';
 interface ViewPt {
   pid: number;
   gid: string;
+  ref: string;
   side: Side;
   x: number; // view-frame mm
   y: number;
   bw: number; // unrotated bbox mm
   bh: number;
+  pads?: { x_mm: number; y_mm: number; w_mm: number; h_mm: number; shape: string }[];
 }
 
 interface Geo {
@@ -49,8 +51,9 @@ interface View {
 const COL = {
   outline: '#8a94a0',
   boardFill: '#161c22',
+  grid: '#222b34',
   pending: '#47525e',
-  pendingStroke: '#5d6a77',
+  pendingStroke: '#6b7885',
   done: 'rgba(55, 200, 113, 0.45)',
   doneStroke: 'rgba(55, 200, 113, 0.8)',
   skip: '#8a94a0',
@@ -58,6 +61,9 @@ const COL = {
   batchStroke: '#f5a623',
   other: 'rgba(138, 148, 160, 0.3)',
   landmark: '#f5a623',
+  copper: '#c9a15f',
+  copperStroke: '#8a6d3b',
+  refText: '#9aa7b2',
 };
 
 export function BoardMap(props: {
@@ -88,12 +94,16 @@ export function BoardMap(props: {
   const geo = useMemo<Geo>(() => {
     const box = { w: task.meta.board.width_mm, h: task.meta.board.height_mm };
     const deg = normDeg(calibDeg);
-    const gById = new Map(task.groups.map((g) => [g.gid, g] as const));
     const outline = task.meta.board.outline.map(([x, y]) => toViewFrame({ x, y }, box, flip, deg));
+    const gById = new Map(task.groups.map((g) => [g.gid, g] as const));
     const pts = task.placements.map((p) => {
       const v = toViewFrame({ x: p.x_mm, y: p.y_mm }, box, flip, deg);
       const bb = effectiveBbox(p.bbox_mm, gById.get(p.gid)?.footprint ?? '');
-      return { pid: p.pid, gid: p.gid, side: p.side, x: v.x, y: v.y, bw: bb[0], bh: bb[1] };
+      return {
+        pid: p.pid, gid: p.gid, ref: p.ref, side: p.side,
+        x: v.x, y: v.y, bw: bb[0], bh: bb[1],
+        pads: p.pads,
+      };
     });
     const landmarks = task.meta.landmarks.map((lm) => ({
       ref: lm.ref,
@@ -150,7 +160,20 @@ export function BoardMap(props: {
     ctx.strokeStyle = COL.outline;
     ctx.stroke();
 
-    // placements
+    // 5 mm reference grid (full/mini only) -- helps reading positions at a glance
+    if (mode !== 'thumb') {
+      ctx.fillStyle = COL.grid;
+      for (let gx = 5; gx < g.ext.w; gx += 5) {
+        for (let gy = 5; gy < g.ext.h; gy += 5) {
+          ctx.beginPath();
+          ctx.arc(gx, gy, 0.12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    // placements -- true scale everywhere: body rect (status colored), copper
+    // pads on top when the source carries geometry, refdes labels when zoomed
     const thumb = mode === 'thumb';
     for (const p of g.pts) {
       const st: UnitStatus = statuses[p.pid] ?? 'pending';
@@ -159,16 +182,25 @@ export function BoardMap(props: {
       ctx.save();
       ctx.translate(p.x, p.y);
       if (thumb) {
-        ctx.beginPath();
-        ctx.arc(0, 0, Math.max(0.9, 1.6), 0, Math.PI * 2);
-        ctx.fillStyle =
+        // true scale; fall back to a small dot only when the part is sub-pixel
+        const wpx = p.bw * v.s;
+        const hpx = p.bh * v.s;
+        const color =
           other ? COL.other
           : batch ? COL.batch
           : st === 'done' ? COL.doneStroke
           : st === 'skipped' ? COL.skip
           : p.pid === currentPid ? COL.batchStroke
           : COL.pendingStroke;
-        ctx.fill();
+        ctx.fillStyle = color;
+        if (Math.max(wpx, hpx) >= 2.2) {
+          ctx.rotate((normDeg(calibDeg) * Math.PI) / 180);
+          ctx.fillRect(-p.bw / 2, -p.bh / 2, p.bw, p.bh);
+        } else {
+          ctx.beginPath();
+          ctx.arc(0, 0, 1.1 / v.s, 0, Math.PI * 2);
+          ctx.fill();
+        }
         ctx.restore();
         continue;
       }
@@ -176,25 +208,51 @@ export function BoardMap(props: {
       const hw = p.bw / 2;
       const hh = p.bh / 2;
       ctx.beginPath();
-      ctx.rect(-hw, -hh, p.bw, p.bh);
       if (other) {
         ctx.strokeStyle = COL.other;
         ctx.lineWidth = 0.12;
-        ctx.stroke();
+        ctx.strokeRect(-hw, -hh, p.bw, p.bh);
       } else if (st === 'skipped') {
         ctx.setLineDash([0.5, 0.35]);
         ctx.strokeStyle = COL.skip;
         ctx.lineWidth = 0.16;
-        ctx.stroke();
+        ctx.strokeRect(-hw, -hh, p.bw, p.bh);
         ctx.setLineDash([]);
       } else {
+        const r = Math.min(0.18, hw / 3, hh / 3);
+        ctx.roundRect?.(-hw, -hh, p.bw, p.bh, r);
+        if (!ctx.roundRect) ctx.rect(-hw, -hh, p.bw, p.bh);
         ctx.fillStyle = st === 'done' ? COL.done : batch ? COL.batch : COL.pending;
         ctx.fill();
         ctx.strokeStyle = st === 'done' ? COL.doneStroke : batch ? COL.batchStroke : COL.pendingStroke;
         ctx.lineWidth = 0.12;
         ctx.stroke();
+        // copper pads (only when the source knows the geometry)
+        if (p.pads && v.s >= 2.5) {
+          ctx.fillStyle = COL.copper;
+          ctx.strokeStyle = COL.copperStroke;
+          ctx.lineWidth = 0.04;
+          for (const pd of p.pads) {
+            ctx.beginPath();
+            if (pd.shape === 'circle') {
+              ctx.arc(pd.x_mm, pd.y_mm, pd.w_mm / 2, 0, Math.PI * 2);
+            } else {
+              const r2 = Math.min(0.1, pd.w_mm / 4, pd.h_mm / 4);
+              ctx.roundRect?.(pd.x_mm - pd.w_mm / 2, pd.y_mm - pd.h_mm / 2, pd.w_mm, pd.h_mm, r2);
+              if (!ctx.roundRect) ctx.rect(pd.x_mm - pd.w_mm / 2, pd.y_mm - pd.h_mm / 2, pd.w_mm, pd.h_mm);
+            }
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
       }
       ctx.restore();
+      // refdes labels (unrotated screen space, zoomed-in full map only)
+      if (mode === 'full' && !other && v.s >= 5 && st !== 'skipped') {
+        ctx.fillStyle = COL.refText;
+        ctx.font = '1.9px system-ui, sans-serif';
+        ctx.fillText(p.ref, p.x + p.bw / 2 + 0.5, p.y + 0.7);
+      }
     }
 
     // landmarks (mini/full only)
