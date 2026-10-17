@@ -232,10 +232,11 @@ def _largest_loop(segs, tol=0.02):
 # --------------------------------------------------------------- footprints
 
 
-def _footprint_bbox(fp_node, fx, fy, rot):
-    """Axis-aligned bbox (w, h) from pad extents, rotation-aware."""
-    rad = math.radians(rot)
-    cos_r, sin_r = math.cos(rad), math.sin(rad)
+def _footprint_bbox(fp_node):
+    """Footprint LOCAL size (w, h) from pad extents -- the placement's own
+    frame, BEFORE the placement rotation. The renderer applies rot_deg; the
+    spec appendix C default table is likewise local-frame. (M5 fix: this used
+    to return the board-frame AABB, which rendered rotated parts horizontal.)"""
     xs, ys = [], []
     for pad in _children(fp_node, "pad"):
         at = _child(pad, "at")
@@ -243,18 +244,14 @@ def _footprint_bbox(fp_node, fx, fy, rot):
         if at is None or size is None:
             continue
         px, py = _num(at, 1), _num(at, 2)
-        if len(at) > 3:
+        w, h = _num(size, 1), _num(size, 2)
+        if len(at) > 3:  # fold the pad's own rotation: rotate center, swap extents
             pr = math.radians(_num(at, 3))
             px, py = px * math.cos(pr) + py * math.sin(pr), -px * math.sin(pr) + py * math.cos(pr)
-        # CCW in y-down screen frame: x' = x cos + y sin ; y' = -x sin + y cos
-        wx = fx + px * cos_r + py * sin_r
-        wy = fy - px * sin_r + py * cos_r
-        w, h = _num(size, 1), _num(size, 2)
-        k = abs(math.sin(rad))
-        if k > 0.7:  # pad rotated ~90/270: swap extents
-            w, h = h, w
-        xs.extend([wx - w / 2, wx + w / 2])
-        ys.extend([wy - h / 2, wy + h / 2])
+            if abs(math.sin(pr)) > 0.7:
+                w, h = h, w
+        xs.extend([px - w / 2, px + w / 2])
+        ys.extend([py - h / 2, py + h / 2])
     if not xs:
         return None
     return (round(max(xs) - min(xs), 3), round(max(ys) - min(ys), 3))
@@ -308,7 +305,7 @@ def parse_kicad(text: str):
         fx, fy, rot = _at(fp)
         attr = _child(fp, "attr")
         mount = "tht" if (attr and "through_hole" in attr) else "smd"
-        bbox = _footprint_bbox(fp, fx, fy, rot)
+        bbox = _footprint_bbox(fp)
         parts.append(Part(
             ref=ref, value=value, footprint=fp[1] if len(fp) > 1 else "",
             side=side, x=fx, y=fy, rot=rot, bbox=bbox, mount=mount,

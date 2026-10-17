@@ -30,8 +30,10 @@ interface ViewPt {
   side: Side;
   x: number; // view-frame mm
   y: number;
-  bw: number; // unrotated bbox mm
+  bw: number; // local-frame body size mm (rot applies at draw)
   bh: number;
+  rotView: number; // total rotation for drawing, degrees clockwise on screen
+  mirrorX: boolean; // bottom view: local x is mirrored before rotating
   pads?: { x_mm: number; y_mm: number; w_mm: number; h_mm: number; shape: string }[];
 }
 
@@ -99,9 +101,15 @@ export function BoardMap(props: {
     const pts = task.placements.map((p) => {
       const v = toViewFrame({ x: p.x_mm, y: p.y_mm }, box, flip, deg);
       const bb = effectiveBbox(p.bbox_mm, gById.get(p.gid)?.footprint ?? '');
+      // KiCad/JLC rotation is CCW in top view (y-down): visual draw rotation is
+      // its negative. Under the bottom-view x-mirror the sense conjugates back,
+      // so the mirrored face adds instead of subtracts.
+      const rotView = normDeg(deg + (flip === 'none' ? -p.rot_deg : p.rot_deg));
       return {
         pid: p.pid, gid: p.gid, ref: p.ref, side: p.side,
         x: v.x, y: v.y, bw: bb[0], bh: bb[1],
+        rotView,
+        mirrorX: flip !== 'none',
         pads: p.pads,
       };
     });
@@ -194,7 +202,7 @@ export function BoardMap(props: {
           : COL.pendingStroke;
         ctx.fillStyle = color;
         if (Math.max(wpx, hpx) >= 2.2) {
-          ctx.rotate((normDeg(calibDeg) * Math.PI) / 180);
+          ctx.rotate((p.rotView * Math.PI) / 180);
           ctx.fillRect(-p.bw / 2, -p.bh / 2, p.bw, p.bh);
         } else {
           ctx.beginPath();
@@ -204,7 +212,7 @@ export function BoardMap(props: {
         ctx.restore();
         continue;
       }
-      ctx.rotate((normDeg(calibDeg) * Math.PI) / 180);
+      ctx.rotate((p.rotView * Math.PI) / 180);
       const hw = p.bw / 2;
       const hh = p.bh / 2;
       ctx.beginPath();
@@ -233,13 +241,14 @@ export function BoardMap(props: {
           ctx.strokeStyle = COL.copperStroke;
           ctx.lineWidth = 0.04;
           for (const pd of p.pads) {
+            const px = p.mirrorX ? -pd.x_mm : pd.x_mm;
             ctx.beginPath();
             if (pd.shape === 'circle') {
-              ctx.arc(pd.x_mm, pd.y_mm, pd.w_mm / 2, 0, Math.PI * 2);
+              ctx.arc(px, pd.y_mm, pd.w_mm / 2, 0, Math.PI * 2);
             } else {
               const r2 = Math.min(0.1, pd.w_mm / 4, pd.h_mm / 4);
-              ctx.roundRect?.(pd.x_mm - pd.w_mm / 2, pd.y_mm - pd.h_mm / 2, pd.w_mm, pd.h_mm, r2);
-              if (!ctx.roundRect) ctx.rect(pd.x_mm - pd.w_mm / 2, pd.y_mm - pd.h_mm / 2, pd.w_mm, pd.h_mm);
+              ctx.roundRect?.(px - pd.w_mm / 2, pd.y_mm - pd.h_mm / 2, pd.w_mm, pd.h_mm, r2);
+              if (!ctx.roundRect) ctx.rect(px - pd.w_mm / 2, pd.y_mm - pd.h_mm / 2, pd.w_mm, pd.h_mm);
             }
             ctx.fill();
             ctx.stroke();
