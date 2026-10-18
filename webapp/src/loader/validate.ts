@@ -411,6 +411,31 @@ export function validateStj(data: unknown): Validation {
       if ('loc_speak' in p0 && (typeof p0['loc_speak'] !== 'string' || p0['loc_speak'].length > 40)) {
         rep.err('E_TYPE', `${p}.loc_speak`, 'loc_speak must be a string of at most 40 chars');
       }
+      if ('silk' in p0) {
+        const silk = p0['silk'];
+        if (!obj(silk)) {
+          rep.err('E_TYPE', `${p}.silk`, 'silk must be an object');
+        } else {
+          const lines = silk['lines'];
+          const circles = silk['circles'];
+          if (!Array.isArray(lines) || !Array.isArray(circles)) {
+            rep.err('E_TYPE', `${p}.silk`, 'silk needs arrays: lines, circles');
+          } else {
+            lines.forEach((ln, j) => {
+              if (!Array.isArray(ln) || ln.length !== 4 || !ln.every(isNum)) {
+                rep.err('E_TYPE', `${p}.silk.lines[${j}]`, 'expected [x1,y1,x2,y2] finite numbers');
+              }
+            });
+            circles.forEach((c, j) => {
+              if (!Array.isArray(c) || c.length !== 3 || !c.every(isNum)) {
+                rep.err('E_TYPE', `${p}.silk.circles[${j}]`, 'expected [cx,cy,r] finite numbers');
+              } else if (c[2] <= 0) {
+                rep.err('E_RANGE', `${p}.silk.circles[${j}].r`, 'radius must be > 0');
+              }
+            });
+          }
+        }
+      }
     });
     if (sidesSet && sideUsed.size > 0) {
       const a = [...sidesSet].sort();

@@ -55,6 +55,14 @@ export interface StjPad {
   shape: 'rect' | 'circle';
 }
 
+/** Incremental field (spec appendix D): silkscreen graphics of the part's own
+ * face, local frame — the outline that makes a part recognisable (Gerber-ish
+ * rendering). lines: [x1,y1,x2,y2]; circles: [cx,cy,r]. */
+export interface StjSilk {
+  lines: number[][];
+  circles: number[][];
+}
+
 export interface StjPlacement {
   pid: number;
   gid: string;
@@ -65,6 +73,7 @@ export interface StjPlacement {
   rot_deg: number;
   bbox_mm?: [number, number];
   pads?: StjPad[];
+  silk?: StjSilk;
   /** Incremental field (spec appendix D): AI/baked spoken location hint,
    * precomputed at conversion time (e.g. 「MP8760 左下侧」). */
   loc_speak?: string;

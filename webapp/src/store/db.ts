@@ -18,9 +18,12 @@ export interface AppSettings {
   rate: number;
   batchThreshold: number | null;
   voiceName?: string;
+  /** M5 feedback: within a group, pieces 2+ announce only 第N颗+位置+极性
+   * (default true). false = always the full plan-section-6 template. */
+  conciseTts?: boolean;
 }
 
-export const DEFAULT_SETTINGS: AppSettings = { rate: 0.9, batchThreshold: 4 };
+export const DEFAULT_SETTINGS: AppSettings = { rate: 0.9, batchThreshold: 4, conciseTts: true };
 
 /** Clamp/coerce arbitrary (old/corrupt) values into a valid AppSettings. */
 export function normalizeSettings(raw: unknown): AppSettings {
@@ -32,6 +35,7 @@ export function normalizeSettings(raw: unknown): AppSettings {
     batchThreshold: th === null ? null : typeof th === 'number' && Number.isInteger(th) && th >= 2 && th <= 12 ? th : DEFAULT_SETTINGS.batchThreshold,
   };
   if (typeof o['voiceName'] === 'string' && o['voiceName']) s.voiceName = o['voiceName'];
+  s.conciseTts = typeof o['conciseTts'] === 'boolean' ? o['conciseTts'] : DEFAULT_SETTINGS.conciseTts;
   return s;
 }
 

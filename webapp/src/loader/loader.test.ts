@@ -69,6 +69,7 @@ describe('incremental fields (spec appendix D, M5)', () => {
         { "x_mm": -0.775, "y_mm": 0.0, "w_mm": 0.9, "h_mm": 0.95, "shape": "rect" },
         { "x_mm": 0.775, "y_mm": 0.0, "w_mm": 0.9, "h_mm": 0.95, "shape": "circle" }
       ],
+      "silk": { "lines": [[-1.0, -0.5, 1.0, -0.5]], "circles": [[-0.6, 0, 0.15]] },
       "loc_speak": "MP8760 左下侧"`));
     expect(r.ok).toBe(true);
     expect(r.errors).toEqual([]);
@@ -76,6 +77,8 @@ describe('incremental fields (spec appendix D, M5)', () => {
   it('rejects malformed pads (bad shape / non-positive size) and long loc_speak', () => {
     expect(parseStjText(mkWith(`, "pads": [{ "x_mm": 0, "y_mm": 0, "w_mm": 0, "h_mm": 1, "shape": "rect" }]`)).ok).toBe(false);
     expect(parseStjText(mkWith(`, "pads": [{ "x_mm": 0, "y_mm": 0, "w_mm": 1, "h_mm": 1, "shape": "square" }]`)).ok).toBe(false);
+    expect(parseStjText(mkWith(`, "silk": { "lines": [[0, 0, 1]], "circles": [] }`)).ok).toBe(false);
+    expect(parseStjText(mkWith(`, "silk": { "lines": [], "circles": [[0, 0, -1]] }`)).ok).toBe(false);
     expect(parseStjText(mkWith(`, "loc_speak": "${'x'.repeat(41)}"`)).ok).toBe(false);
   });
 });

@@ -14,6 +14,9 @@ export interface UnitAnnouncement {
   /** User-frame location phrase (e.g. 板子右上，靠 Type-C 座), precomposed by
    * locationPhrase. Omitted before calibration -- 宁可少说，不说错的. */
   loc?: string;
+  /** M5 feedback (语音烂): within the same group, pieces 2+ drop the count
+   * total and the (identical) footprint/value repetition. */
+  concise?: boolean;
 }
 
 export function speakValue(group: StjGroup): string {
@@ -24,8 +27,15 @@ export function speakFootprint(group: StjGroup): string {
   return group.footprint_speak ?? group.footprint;
 }
 
-/** 「第 5 颗，共 32 颗。0603 电阻，10千欧，板子右上，靠 Type-C 座。注意极性。」 */
+/** 「第 5 颗，共 32 颗。0603 电阻，10千欧，板子右上，靠 Type-C 座。注意极性。」
+ *  concise: 「第 6 颗，板子右中。注意极性。」 -- group repetition trimmed. */
 export function unitSentence(a: UnitAnnouncement): string {
+  if (a.concise) {
+    const parts = [`第 ${a.index} 颗`];
+    if (a.loc) parts.push(a.loc);
+    const head = parts.join('，') + '。';
+    return a.group.polarity ? head + '注意极性。' : head;
+  }
   const parts = [
     `第 ${a.index} 颗，共 ${a.total} 颗。`,
     `${speakFootprint(a.group)}，${speakValue(a.group)}${a.loc ? `，${a.loc}` : ''}。`,

@@ -94,10 +94,10 @@ describe('settings normalization round-trip', () => {
     expect(normalizeSettings({ rate: 'x', batchThreshold: 0 })).toEqual(DEFAULT_SETTINGS);
   });
   it('valid values survive; rate clamps to 0.7-1.2; threshold null = off', () => {
-    expect(normalizeSettings({ rate: 1.1, batchThreshold: 6 })).toEqual({ rate: 1.1, batchThreshold: 6 });
-    expect(normalizeSettings({ rate: 2, batchThreshold: null })).toEqual({ rate: 1.2, batchThreshold: null });
-    expect(normalizeSettings({ rate: 0.1, batchThreshold: 99 })).toEqual({ rate: 0.7, batchThreshold: 4 });
-    expect(normalizeSettings({ rate: 0.75, batchThreshold: 2 })).toEqual({ rate: 0.75, batchThreshold: 2 });
+    expect(normalizeSettings({ rate: 1.1, batchThreshold: 6 })).toEqual({ rate: 1.1, batchThreshold: 6, conciseTts: true });
+    expect(normalizeSettings({ rate: 2, batchThreshold: null })).toEqual({ rate: 1.2, batchThreshold: null, conciseTts: true });
+    expect(normalizeSettings({ rate: 0.1, batchThreshold: 99 })).toEqual({ rate: 0.7, batchThreshold: 4, conciseTts: true });
+    expect(normalizeSettings({ rate: 0.75, batchThreshold: 2 })).toEqual({ rate: 0.75, batchThreshold: 2, conciseTts: true });
   });
   it('written settings read back equal (normalize is idempotent)', () => {
     const s = normalizeSettings({ rate: 0.8, batchThreshold: 8 });

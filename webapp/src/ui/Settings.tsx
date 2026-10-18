@@ -96,6 +96,29 @@ export function SettingsScreen(props: { onDone(): void }) {
             </section>
 
             <section class="settings-card">
+              <h2>播报详细度</h2>
+              <div class="chip-row" data-testid="concise-row">
+                <button
+                  class={`chip ${s.conciseTts !== false ? 'chip-on' : ''}`}
+                  data-testid="tts-concise"
+                  onClick={() => update({ conciseTts: true })}
+                >
+                  简洁（组内只报序号+位置）
+                </button>
+                <button
+                  class={`chip ${s.conciseTts === false ? 'chip-on' : ''}`}
+                  data-testid="tts-full"
+                  onClick={() => update({ conciseTts: false })}
+                >
+                  详细（每颗完整模板）
+                </button>
+              </div>
+              <div class="muted settings-note">
+                简洁模式：每组第一颗报完整信息，之后只报「第 N 颗 + 位置」。
+              </div>
+            </section>
+
+            <section class="settings-card">
               <h2>语音音色</h2>
               <select
                 class="voice-select"

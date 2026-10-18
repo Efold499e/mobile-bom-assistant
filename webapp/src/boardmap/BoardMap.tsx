@@ -35,6 +35,7 @@ interface ViewPt {
   rotView: number; // total rotation for drawing, degrees clockwise on screen
   mirrorX: boolean; // bottom view: local x is mirrored before rotating
   pads?: { x_mm: number; y_mm: number; w_mm: number; h_mm: number; shape: string }[];
+  silk?: { lines: number[][]; circles: number[][] };
 }
 
 interface Geo {
@@ -111,6 +112,7 @@ export function BoardMap(props: {
         rotView,
         mirrorX: flip !== 'none',
         pads: p.pads,
+        silk: p.silk,
       };
     });
     const landmarks = task.meta.landmarks.map((lm) => ({
@@ -178,6 +180,24 @@ export function BoardMap(props: {
           ctx.fill();
         }
       }
+    }
+
+    // nine-grid zone words (fullscreen, whole board visible): the SAME words
+    // the announcement uses, painted onto the regions they refer to
+    if (mode === 'full' && g.ext.w * viewRef.current.s <= cont.clientWidth + 1
+        && g.ext.h * viewRef.current.s <= cont.clientHeight + 1) {
+      const W9 = ['左上', '正上', '右上', '左中', '正中', '右中', '左下', '正下', '右下'];
+      ctx.fillStyle = 'rgba(138, 148, 160, 0.45)';
+      ctx.font = '4px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          ctx.fillText(W9[i * 3 + j], (g.ext.w * (j + 0.5)) / 3, (g.ext.h * (i + 0.5)) / 3);
+        }
+      }
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'alphabetic';
     }
 
     // placements -- true scale everywhere: body rect (status colored), copper
@@ -253,6 +273,24 @@ export function BoardMap(props: {
             ctx.fill();
             ctx.stroke();
           }
+        }
+        // silkscreen outline: what makes the part's shape readable
+        if (p.silk && v.s >= 2.5) {
+          ctx.strokeStyle = other ? COL.other : 'rgba(226, 232, 238, 0.8)';
+          ctx.lineWidth = 0.15;
+          ctx.beginPath();
+          for (const ln of p.silk.lines) {
+            const x1 = p.mirrorX ? -ln[0] : ln[0];
+            ctx.moveTo(x1, ln[1]);
+            const x2 = p.mirrorX ? -ln[2] : ln[2];
+            ctx.lineTo(x2, ln[3]);
+          }
+          for (const c of p.silk.circles) {
+            const cx = p.mirrorX ? -c[0] : c[0];
+            ctx.moveTo(cx + c[2], c[1]);
+            ctx.arc(cx, c[1], c[2], 0, Math.PI * 2);
+          }
+          ctx.stroke();
         }
       }
       ctx.restore();

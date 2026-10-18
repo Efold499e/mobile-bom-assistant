@@ -303,6 +303,47 @@ def _footprint_pads(fp_node):
     return pads or None
 
 
+def _footprint_silk(fp_node, side):
+    """Silkscreen graphics of the part's own face, footprint-LOCAL frame:
+    {lines: [[x1,y1,x2,y2],...], circles: [[cx,cy,r],...]}. This is what makes
+    a component recognisable on a Gerber render (resistor outline, IC box,
+    pin-1 mark). Capped to keep the STJ lean. Layer name is F.SilkS/B.SilkS in
+    file format (v10 still writes the abbreviation)."""
+    want = ("F.SilkS" if side == TOP else "B.SilkS")
+    lines, circles = [], []
+    cap = 48
+    for name in ("fp_line", "fp_rect", "fp_circle", "fp_arc"):
+        for g in _children(fp_node, name):
+            layer = _child(g, "layer")
+            if not layer or not str(layer[1]).startswith(want[:6]):
+                continue
+            if name == "fp_line":
+                s, e = _child(g, "start"), _child(g, "end")
+                lines.append([_num(s, 1), _num(s, 2), _num(e, 1), _num(e, 2)])
+            elif name == "fp_rect":
+                s, e = _child(g, "start"), _child(g, "end")
+                x0, y0, x1, y1 = _num(s, 1), _num(s, 2), _num(e, 1), _num(e, 2)
+                lines.extend([[x0, y0, x1, y0], [x1, y0, x1, y1],
+                              [x1, y1, x0, y1], [x0, y1, x0, y0]])
+            elif name == "fp_circle":
+                c, e = _child(g, "center"), _child(g, "end")
+                circles.append([_num(c, 1), _num(c, 2),
+                                math.hypot(_num(e, 1) - _num(c, 1), _num(e, 2) - _num(c, 2))])
+            else:  # fp_arc
+                s, mid, e = _child(g, "start"), _child(g, "mid"), _child(g, "end")
+                pts = _sample_arc((_num(s, 1), _num(s, 2)), (_num(mid, 1), _num(mid, 2)),
+                                  (_num(e, 1), _num(e, 2)), samples=6)
+                for seg in pts:
+                    lines.append(list(seg))
+            if len(lines) >= cap:
+                lines = lines[:cap]
+                break
+    if not lines and not circles:
+        return None
+    return {"lines": [[round(v, 3) for v in ln] for ln in lines],
+            "circles": [[round(v, 3) for v in c] for c in circles]}
+
+
 def parse_kicad(text: str):
     """Parse .kicad_pcb text -> (parts, outline_src). y-down source frame.
     Accepts `footprint` (v6+), `fp_chip` (v3-era) and `module` (v4/v5)."""
@@ -323,6 +364,7 @@ def parse_kicad(text: str):
             side=side, x=fx, y=fy, rot=rot, bbox=bbox, mount=mount,
             excluded=_is_excluded_attr(fp),
             pads=_footprint_pads(fp),
+            silk=_footprint_silk(fp, side),
         ))
     outline = _largest_loop(_collect_edge_segments(tree))
     return parts, outline

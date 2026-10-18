@@ -36,6 +36,9 @@ class Part:
     # the renderer rotates). List of {x, y, w, h, shape} in mm. Sources that
     # carry no geometry (JLC CSV pairs) leave this None.
     pads: list | None = None
+    # Silkscreen graphics, same local frame: {lines, circles}. What makes a
+    # part recognisable on a Gerber-style render. None when the source lacks it.
+    silk: dict | None = None
 
 
 @dataclass
@@ -165,6 +168,11 @@ def build_task(parts: list, outline_src: list, source: str, project: str, create
                 }
                 for pd in p.pads
             ]
+        if p.silk:
+            placement["silk"] = {
+                "lines": [[round(v, 3) + 0.0 for v in ln] for ln in p.silk["lines"]],
+                "circles": [[round(v, 3) + 0.0 for v in c] for c in p.silk["circles"]],
+            }
         placement["_kind"] = kind
         placement["_fp_name"] = footprint_display_name(p.footprint)
         placement["_value"] = norm.value

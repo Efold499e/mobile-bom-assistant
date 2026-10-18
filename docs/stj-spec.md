@@ -220,3 +220,13 @@ STATS placements=12 groups=5 polarity=3 sides=2 landmarks=2
 - webapp 播报与卡片第三行优先取该字段。
 
 同步改动：`converter/`（parsers/model/ai_loc）、`webapp/src/loader/{types,validate}.ts`、金样 `kicad_min` 重生成（diff 仅增量）。
+
+### D.3 `placements[].silk`（丝印图形，渲染用）
+
+```json
+{ "silk": { "lines": [[-1.0,-0.5,1.0,-0.5]], "circles": [[-0.6,0,0.15]] } }
+```
+
+- 器件自身局部坐标系（随 `rot_deg` 旋转；底面视图渲染时局部 x 取镜像）。
+- 来源：KiCad `fp_line/fp_rect/fp_circle/fp_arc` 的 `F.SilkS/B.SilkS` 层（文件内层名为缩写 SilkS）；每器件上限 48 段。嘉立创 CSV 无几何 → 不产出。
+- 渲染端在缩放足够时以细白线描出，即 Gerber 观感的器件形状。

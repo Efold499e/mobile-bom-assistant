@@ -94,6 +94,8 @@ export function RunScreen(props: {
   const batchRef = useRef(new BatchTracker());
   const pendingAskRef = useRef<string | null>(null);
   const sideRef = useRef<Side>('top'); // face currently on the bench
+  const lastSpokenGid = useRef<string | null>(null); // concise-announce tracking
+  const conciseRef = useRef(true);
   // view info as refs so the memoized dispatcher hooks never read stale state
   const viewInfoRef = useRef<{ deg: number | null; flip: 'lr' | 'tb' }>({ deg: null, flip: 'lr' });
 
@@ -135,6 +137,7 @@ export function RunScreen(props: {
       getSpeaker().setRate(st.rate);
       getSpeaker().setVoice(st.voiceName ?? null);
       batchRef.current.setThreshold(st.batchThreshold);
+      conciseRef.current = st.conciseTts !== false;
       setMenuPicks(rec.pickOrder);
       if (rec.calib) {
         // load the saved calibration into state in EVERY entry path (menu,
@@ -201,7 +204,10 @@ export function RunScreen(props: {
             viewInfoRef.current.deg,
           ) ?? undefined)
         : undefined);
-    getSpeaker().say(unitSentence({ index: idx + 1, total: s.order.length, group, loc }));
+    // 简洁播报: pieces 2+ of the SAME group skip the fp/value repetition
+    const concise = conciseRef.current && unit.gid === lastSpokenGid.current;
+    lastSpokenGid.current = unit.gid;
+    getSpeaker().say(unitSentence({ index: idx + 1, total: s.order.length, group, loc, concise }));
   };
 
   const hooks = useMemo<DispatcherHooks>(
