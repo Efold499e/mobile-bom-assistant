@@ -128,7 +128,7 @@ def _is_excluded_attr(fp_node):
 
 def _collect_edge_segments(tree):
     segs = []
-    for name in ("gr_line", "gr_rect", "gr_arc"):
+    for name in ("gr_line", "gr_rect", "gr_arc", "gr_circle"):
         for g in _children(tree, name):
             layer = _child(g, "layer")
             if not layer or layer[1] != "Edge.Cuts":
@@ -142,6 +142,16 @@ def _collect_edge_segments(tree):
                 segs.extend([
                     (x0, y0, x1, y0), (x1, y0, x1, y1), (x1, y1, x0, y1), (x0, y1, x0, y0),
                 ])
+            elif name == "gr_circle":
+                c, e = _child(g, "center"), _child(g, "end")
+                cx, cy = _num(c, 1), _num(c, 2)
+                r = math.hypot(_num(e, 1) - cx, _num(e, 2) - cy)
+                n = 24
+                segs.extend(
+                    [(cx + r * math.cos(2 * math.pi * i / n), cy + r * math.sin(2 * math.pi * i / n),
+                      cx + r * math.cos(2 * math.pi * (i + 1) / n), cy + r * math.sin(2 * math.pi * (i + 1) / n))
+                     for i in range(n)]
+                )
             else:  # gr_arc: sample start->mid->end
                 s, mid, e = _child(g, "start"), _child(g, "mid"), _child(g, "end")
                 segs.extend(_sample_arc(
@@ -294,10 +304,12 @@ def _footprint_pads(fp_node):
 
 
 def parse_kicad(text: str):
-    """Parse .kicad_pcb text -> (parts, outline_src). y-down source frame."""
+    """Parse .kicad_pcb text -> (parts, outline_src). y-down source frame.
+    Accepts `footprint` (v6+), `fp_chip` (v3-era) and `module` (v4/v5)."""
     tree = parse_sexpr(text)
     parts = []
-    for fp in _children(tree, "footprint"):
+    for fp in (_children(tree, "footprint") + _children(tree, "fp_chip")
+               + _children(tree, "module")):
         ref = _prop(fp, "Reference") or ""
         value = _prop(fp, "Value") or ""
         layer = _child(fp, "layer")

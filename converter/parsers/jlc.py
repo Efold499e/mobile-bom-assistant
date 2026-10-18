@@ -7,9 +7,15 @@ professional exports -- sniffed through alias lists.
 
 Frame notes: JLC coordinates are mm, LEFT-BOTTOM origin, y points UP. Canonical
 (STJ) is top-left origin, y DOWN, so y' = padded_top - y and x' = x - padded_left.
-Rotations: top parts negated (y-up CCW becomes y-down CW); bottom parts get
-(180 - rot), matching the JLC->KiCad convention -- the position itself is
-NEVER mirrored (bottom parts stay in top-view coordinates, spec iron rule).
+Rotations (M5 ground-truth fix): the CSV angle describes how the part sits
+(CCW, same convention as KiCad) -- proven by cross-checking the 2dgimbal v1.3
+CSV against the same design's KiCad file via kicad-cli (86/102 rotated parts
+agree exactly, none systematically inverted). A y-axis flip of the coordinate
+system does NOT negate the physical placement rotation, so TOP parts pass
+through unchanged. Bottom parts use (180 - rot) per the JLC->KiCad convention
+(documented in m2-contract-notes; still unverified against a real bottom-side
+export) -- the position itself is NEVER mirrored (bottom parts stay in
+top-view coordinates, spec iron rule).
 """
 
 import csv
@@ -113,9 +119,9 @@ def parse_xy(xy_path: str, bom: dict | None = None):
         side = _side_of(layer)
         rot = _f(row[idx["rot"]]) if idx.get("rot") is not None and row[idx["rot"]].strip() else 0.0
         if side == TOP:
-            rot_out = (360.0 - rot) % 360.0
+            rot_out = rot % 360.0  # physical rotation; y-flip does not negate it
         else:
-            rot_out = (180.0 - rot) % 360.0
+            rot_out = (180.0 - rot) % 360.0  # bottom-view angle (m2 note, unverified)
         parts.append(Part(
             ref=ref,
             value=value,

@@ -76,9 +76,14 @@ class JLCFrameFlip(unittest.TestCase):
         task, _ = build_task(self.parts, self.outline, "jlc", "t", NOW,
                              flip_y_about=self.flip)
         pl = {p["ref"]: p for p in task["placements"]}
-        self.assertEqual(pl["LED1"]["rot_deg"], 270.0)  # top: 360-90
+        # M5 ground-truth fix: the CSV angle describes the physical placement
+        # (CCW, same convention as KiCad) -- a y-axis flip of the coordinate
+        # system does not negate it, so TOP parts pass through unchanged.
+        # Verified against the 2dgimbal same-design KiCad file via kicad-cli
+        # (86/102 rotated parts agree exactly, none systematically inverted).
+        self.assertEqual(pl["LED1"]["rot_deg"], 90.0)   # top: pass-through
         self.assertEqual(pl["R5"]["rot_deg"], 180.0)    # bottom: 180-0
-        self.assertEqual(pl["R1"]["rot_deg"], 0.0)      # top: 360-0
+        self.assertEqual(pl["R1"]["rot_deg"], 0.0)      # top: pass-through
 
     def test_outline_is_padded_placement_bbox(self):
         task, _ = build_task(self.parts, self.outline, "jlc", "t", NOW,
