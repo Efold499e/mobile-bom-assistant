@@ -6,3 +6,6 @@ build/
 .v2c/
 .video_agent/
 docs/qa/**/tmp*.png
+
+# native app build artifacts (regenerate via: cd webapp && npm run sync:native && cd android && gradlew assembleRelease)
+docs/qa/native/*.apk

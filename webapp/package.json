@@ -6,13 +6,20 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:native": "tsc -b && vite build --mode native",
+    "sync:native": "npm run build:native && cap sync android",
     "preview": "vite preview",
     "test": "vitest run"
   },
   "dependencies": {
+    "@capacitor-community/keep-awake": "^5.0.1",
+    "@capacitor-community/text-to-speech": "^5.1.0",
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/core": "^6.2.2",
     "preact": "^10.29.8"
   },
   "devDependencies": {
+    "@capacitor/cli": "^6.2.2",
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "^24.13.3",
     "typescript": "~6.0.2",
