@@ -129,13 +129,47 @@ def build_task(parts: list, outline_src: list, source: str, project: str, create
     kept = [p for p in parts if not (p.excluded or is_excluded(p.ref, p.footprint))]
     excluded_parts = [p for p in parts if p not in kept]
 
+    if outline_src is None:
+        raise ValueError(
+            "no closed board outline found on Edge.Cuts "
+            "(file truncated, or the outline is drawn on another layer such as Margin)")
+
     board = Board(outline=[list(pt) for pt in outline_src], flip_y_about=flip_y_about)
     board.lock_origin()
 
-    placements = []
+    # Parts parked >1mm outside the board outline (screws/nuts/washers mounted
+    # on standoffs, parts strewn off-board in old demos) are not solderable
+    # positions; spec E_RANGE would reject them, so drop them with a note.
     anomalies = []
+    ob_x = [board.to_canonical(pt[0], pt[1])[0] for pt in board.outline]
+    ob_y = [board.to_canonical(pt[0], pt[1])[1] for pt in board.outline]
+    bx0, bx1, by0, by1 = min(ob_x), max(ob_x), min(ob_y), max(ob_y)
+    on_board = []
+    for p in kept:
+        cx, cy = board.to_canonical(p.x, p.y)
+        if bx0 - 1.0 <= cx <= bx1 + 1.0 and by0 - 1.0 <= cy <= by1 + 1.0:
+            on_board.append(p)
+        else:
+            anomalies.append(
+                f"{p.ref}: center ({cx:.2f}, {cy:.2f}) is outside the board outline; dropped")
+    kept = on_board
+    if not kept:
+        raise ValueError(
+            f"no solderable parts found ({len(excluded_parts)} excluded as "
+            "mechanical/board-only, " + str(sum(1 for a in anomalies if 'outside the board' in a))
+            + " dropped as off-board)")
+
+    placements = []
+    anomalies_dedup = []
     by_ref = {}
     for p in sorted(kept, key=lambda q: (0 if q.side == TOP else 1, q.ref)):
+        ref = p.ref
+        if ref in by_ref:
+            n = 2
+            while f"{ref}_{n}" in by_ref:
+                n += 1
+            anomalies_dedup.append(f"duplicate refdes {p.ref} -> renamed {ref}_{n}")
+            ref = f"{ref}_{n}"
         kind = classify_kind(p.ref, p.footprint)
         norm = normalize_value(p.value, kind)
         if not norm.ok:
@@ -149,7 +183,7 @@ def build_task(parts: list, outline_src: list, source: str, project: str, create
         placement = {
             "pid": pid,
             "gid": None,
-            "ref": p.ref,
+            "ref": ref,
             "side": p.side,
             "x_mm": cx,
             "y_mm": cy,
@@ -179,7 +213,7 @@ def build_task(parts: list, outline_src: list, source: str, project: str, create
         placement["_value_speak"] = norm.speak
         placement["_mount"] = p.mount
         placements.append(placement)
-        by_ref[p.ref] = (p.x, p.y)
+        by_ref[ref] = (p.x, p.y)
 
     groups: dict = {}
     for pl in placements:
@@ -226,14 +260,18 @@ def build_task(parts: list, outline_src: list, source: str, project: str, create
 
     group_order_default = process_default_order(group_list)
 
-    sides = [TOP] if all(pl["side"] == TOP for pl in placements) else [TOP, BOTTOM]
+    sides = [s for s in (TOP, BOTTOM) if any(pl["side"] == s for pl in placements)]
 
     landmark_parts = sorted(
         (pl for pl in placements if pl["_kind"] == "conn"),
         key=lambda pl: -((pl.get("bbox_mm") or [0.0, 0.0])[0] * (pl.get("bbox_mm") or [0.0, 0.0])[1]),
     )[:3]
     landmarks = []
+    seen_landmark_refs = set()
     for pl in landmark_parts:
+        if pl["ref"] in seen_landmark_refs:
+            continue
+        seen_landmark_refs.add(pl["ref"])
         sx, sy = by_ref[pl["ref"]]
         lx, ly = board.to_canonical(sx, sy)
         landmarks.append({"ref": pl["ref"], "speak": landmark_speak(pl["ref"]), "x_mm": lx, "y_mm": ly})
@@ -260,7 +298,7 @@ def build_task(parts: list, outline_src: list, source: str, project: str, create
         "group_order_default": group_order_default,
     }
     diagnostics = {
-        "anomalies": anomalies,
+        "anomalies": anomalies + anomalies_dedup,
         "excluded": [f"{p.ref} ({p.footprint})" for p in excluded_parts],
         "kept": len(placements),
         "groups": group_list,

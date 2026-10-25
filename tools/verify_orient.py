@@ -27,15 +27,32 @@ BOARDS = [
     ("electrical-trigger", r"E:\archive\未分类\MP8760_electric_PLUG\MP8760_electric_PLUG\project\hardware\kicad_part\electrical-trigger.kicad_pcb"),
     ("cantact", r"E:\archive\RM2026赛季\canable\cantact-hw\cantact.kicad_pcb"),
     ("tiny-screen", r"D:\Users\Administrator\Desktop\活跃项目\banzi\tiny-screen.kicad_pcb"),
+    # 2026-10-24 corpus round: new real boards (see docs/qa/corpus-2026-10-24.md)
+    ("jetson-orin-baseboard", r"E:\archive\RM2026赛季\jetson-orin-baseboard\jetson-orin-baseboard.kicad_pcb"),
+    ("rm2025-portable-armor", r"E:\downloads\RM2025-Portable-Armor-main\RM2025-Portable-Armor-main\Hardware\RM2025-Portable-Armor.kicad_pcb"),
+    ("yis130-pre", r"D:\Users\Administrator\Desktop\活跃项目\banzi\yis130-hardware-pre.kicad_pcb"),
+    ("yis130", r"D:\Users\Administrator\Desktop\活跃项目\banzi\ys106-imu-hardware-main-\yis130-hardware.kicad_pcb"),
+    ("rs-hpm-rdc", r"D:\Users\Administrator\Desktop\活跃项目\banzi\hpm_apps\apps\rdc\hardware\hardware_project\RS.kicad_pcb"),
+    ("baseboard-wechat", r"D:\Users\Administrator\xwechat_files\wxid_ho47iv0tdq0d12_90b7\msg\file\2026-06\baseboard(1).kicad_pcb"),
+    ("2dgimbal-main", r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\2dgimbal-main.kicad_pcb"),
+    ("2dgimbal-sub", r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\2dgimbal-sub.kicad_pcb"),
+    # GitHub open hardware (shallow-cloned under build/more-boards/ext)
+    ("gh-esp-rust-board", r"build\more-boards\ext\esp-rust-board\hardware\esp-rust-board\esp-rust-board.kicad_pcb"),
+    ("gh-thelio-io", r"build\more-boards\ext\thelio-io-hardware\pcb-thelio-io\thelio-io.kicad_pcb"),
+    ("gh-ultrapif-fpga", r"build\more-boards\ext\UltraPIF_Hardware\pif_fpga\pif_fpga.kicad_pcb"),
 ]
 
 # JLC: compare the converted STJ against the placement CSV it came from.
 # CSV is y-up bottom-origin -> x differs by a constant, y sums to a constant;
 # rotation must match exactly (top pass-through, M5 fix).
-JLC_BOARD = ("2dgimbal-v13",
-             r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\production\2dgimbal_v1.3_positions.csv",
-             r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\production\2dgimbal_v1.3_bom.csv",
-             r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\production\2dgimbal_v1.3_positions.csv")
+JLC_BOARDS = [
+    ("2dgimbal-v10",
+     r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\production\2dgimbal_v1.0_positions.csv"),
+    ("2dgimbal-v11",
+     r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\production\2dgimbal_v1.1_positions.csv"),
+    ("2dgimbal-v13",
+     r"E:\archive\未分类\2d-gimbal-board\hardware\2dgimbal\production\2dgimbal_v1.3_positions.csv"),
+]
 
 
 def check_jlc(name, xy, bom, xy_again):
@@ -127,8 +144,13 @@ def check(name: str, pcb: Path) -> list:
 def main() -> int:
     problems = []
     for name, pcb in BOARDS:
-        problems += check(name, Path(pcb))
-    problems += check_jlc(*JLC_BOARD)
+        p = Path(pcb)
+        if not p.is_absolute():
+            p = ROOT / p
+        problems += check(name, p)
+    for name, pos in JLC_BOARDS:
+        bom = pos.replace("_positions.csv", "_bom.csv")
+        problems += check_jlc(name, pos, bom, pos)
     for p in problems:
         print("MISMATCH:", p)
     print("RESULT:", "FAIL" if problems else "ALL AGREE")

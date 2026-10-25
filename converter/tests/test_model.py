@@ -140,5 +140,69 @@ class BuildTaskBasics(unittest.TestCase):
                              sum(1 for q in task["placements"] if q["gid"] == pl["gid"]))
 
 
+class CorpusRegression(unittest.TestCase):
+    """Fixes surfaced by the 2026-10-24 expanded corpus run (50 boards)."""
+
+    def test_single_bottom_side_board_reports_bottom_only(self):
+        # Arduino Nano template: pin headers genuinely on B.Cu, nothing on top.
+        parts = [
+            Part("J1", "Conn_1x15", "PinHeader_1x15", x=5, y=10, side=BOTTOM),
+            Part("J2", "Conn_1x15", "PinHeader_1x15", x=40, y=10, side=BOTTOM),
+        ]
+        task, _ = build_task(parts, OUTLINE, "kicad", "t", NOW)
+        self.assertEqual(task["sides"], ["bottom"])
+
+    def test_missing_outline_raises_clean_valueerror(self):
+        # RoyalBlue54L / DevEBox: corrupt or Edge.Cuts-less file used to crash
+        # with TypeError; it must fail as a plain ValueError (CLI prints + rc 2).
+        parts = [Part("R1", "10k", "R_0603_1608Metric", x=10, y=10)]
+        with self.assertRaises(ValueError):
+            build_task(parts, None, "kicad", "t", NOW)
+
+    def test_landmark_refs_are_unique(self):
+        # microwave demo: three poly capacitors all ref'd POLY, all bigger than
+        # everything else -> landmarks must not repeat the same ref.
+        parts = [
+            Part("POLY", "100n", "CP_Axial", x=5, y=5),
+            Part("POLY", "100n", "CP_Axial", x=15, y=5),
+            Part("POLY", "100n", "CP_Axial", x=25, y=5),
+            Part("R1", "10k", "R_0603_1608Metric", x=10, y=20),
+        ]
+        task, _ = build_task(parts, OUTLINE, "kicad", "t", NOW)
+        refs = [lm["ref"] for lm in task["meta"]["landmarks"]]
+        self.assertEqual(len(refs), len(set(refs)))
+
+    def test_duplicate_placement_refs_are_renamed_and_survive(self):
+        parts = [
+            Part("POLY", "100n", "CP_Axial", x=5, y=5),
+            Part("POLY", "100n", "CP_Axial", x=15, y=5),
+            Part("POLY", "100n", "CP_Axial", x=25, y=5),
+        ]
+        task, diag = build_task(parts, OUTLINE, "kicad", "t", NOW)
+        refs = [p["ref"] for p in task["placements"]]
+        self.assertEqual(sorted(refs), ["POLY", "POLY_2", "POLY_3"])
+        self.assertEqual(task["groups"][0]["refdes"], sorted(refs))
+        self.assertTrue(any("duplicate refdes" in a for a in diag["anomalies"]))
+
+    def test_off_board_parked_parts_are_dropped(self):
+        # vme-wren: screws/nuts parked above the board on standoffs are not
+        # solderable positions; they must not poison the task (E_RANGE).
+        parts = [
+            Part("R1", "10k", "R_0603_1608Metric", x=10, y=10),
+            Part("SCREW1", "M3", "Screw_Hole", x=10, y=-30),
+            Part("NUT1", "M3", "Nut", x=40, y=-20),
+        ]
+        task, diag = build_task(parts, OUTLINE, "kicad", "t", NOW)
+        self.assertEqual([p["ref"] for p in task["placements"]], ["R1"])
+        self.assertTrue(any("outside the board outline" in a for a in diag["anomalies"]))
+
+    def test_all_mechanical_board_raises_clean_valueerror(self):
+        # EuroCard / Hammond templates: only mounting holes -> clear refusal,
+        # not an empty STJ the validator has to reject.
+        parts = [Part("H1", "", "MountingHole_3.2mm", x=5, y=5)]
+        with self.assertRaises(ValueError):
+            build_task(parts, OUTLINE, "kicad", "t", NOW)
+
+
 if __name__ == "__main__":
     unittest.main()
