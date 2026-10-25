@@ -1,7 +1,7 @@
 // Import: file pick + paste-JSON emergency path, stats confirmation before saving.
 
 import { useRef, useState } from 'react';
-import { parseStjText } from '../loader';
+import { friendlyErrors, parseStjText } from '../loader';
 import type { StjTask, TaskStats } from '../loader';
 import { putTask } from '../store/db';
 
@@ -19,6 +19,12 @@ export function ImportScreen(props: { onDone(): void; onCancel(): void }) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleText = (text: string) => {
+    if (!text.trim()) {
+      // soak F-UX3: empty input gets a human message, not a JSON parse error
+      setParsed(null);
+      setErrors(['内容为空：请先粘贴任务文件内容，或用上方按钮选择 .stj.json 文件。']);
+      return;
+    }
     const r = parseStjText(text);
     if (r.ok && r.task && r.stats) {
       setParsed({ task: r.task, stats: r.stats, warnings: r.warnings });
@@ -87,7 +93,20 @@ export function ImportScreen(props: { onDone(): void; onCancel(): void }) {
                 </button>
               </div>
             )}
-            {errors && <div class="errors">{errors.join('\n')}</div>}
+            {errors && (
+              <div class="errors" data-testid="import-errors">
+                {(codeSeen(errors[0]) ? friendlyErrors(errors) : errors).map((line) => (
+                  <div key={line}>{line}</div>
+                ))}
+                {codeSeen(errors[0]) && (
+                  <details>
+                    <summary>技术明细（{errors.length} 处）</summary>
+                    {errors.slice(0, 5).map((e) => <div key={e}>{e}</div>)}
+                    {errors.length > 5 && <div>…等共 {errors.length} 处</div>}
+                  </details>
+                )}
+              </div>
+            )}
           </>
         )}
 
@@ -127,6 +146,12 @@ export function ImportScreen(props: { onDone(): void; onCancel(): void }) {
       </div>
     </div>
   );
+}
+
+/** validator lines look like "E_CODE: message (at path)" -- only those carry a
+ * technical detail worth collapsing; hand-written friendly lines do not. */
+function codeSeen(line: string): boolean {
+  return /^E_[A-Z]+:/.test(line);
 }
 
 function StatCell(props: { n: number; label: string }) {

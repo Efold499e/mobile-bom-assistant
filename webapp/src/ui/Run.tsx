@@ -73,6 +73,7 @@ export function RunScreen(props: {
   onExit(): void;
 }) {
   const [task, setTask] = useState<StjTask | null>(null);
+  const calibFrom = useRef<'menu' | 'loop'>('menu');
   const [, setTick] = useState(0); // re-render after each dispatch
   const [phase, setPhase] = useState<'loading' | 'menu' | 'calibrate' | 'loop' | 'finishList'>('loading');
   const [calibDeg, setCalibDeg] = useState<number | null>(null);
@@ -152,6 +153,7 @@ export function RunScreen(props: {
         setPhase('loop');
         startLoop();
       } else {
+        calibFrom.current = 'loop'; // resuming a picked/calibrated-less run
         setPhase('calibrate');
       }
       setTick((x) => x + 1);
@@ -228,6 +230,14 @@ export function RunScreen(props: {
         const unit = queue.current[idx];
         const group = unit && groupOf(unit.gid);
         if (!group) return;
+        // soak F-01: an unanswered batch ask is only valid while its group is
+        // the current one -- advancing into another group (e.g. swipe-skip past
+        // the whole group) must drop the stale dialog, else accepting it later
+        // misannounces the old group while the card shows the new part
+        if (pendingAskRef.current && unit.gid !== pendingAskRef.current) {
+          pendingAskRef.current = null;
+          setBatchAsk(null);
+        }
         // face flip: the first unit of the next face opens the confirm dialog
         // (plan section 9: 双面衔接; reuses calibration, no new command)
         if (unit.side !== sideRef.current) {
@@ -331,6 +341,13 @@ export function RunScreen(props: {
     setPhase('loop');
     if (!startedRef.current) startLoop();
   };
+  // soak F-UX1: the calibrate screen had no way back; remember where it was
+  // entered from (menu fresh-start vs loop re-cal/face-turn) and return there
+  const calibBack = () => {
+    const to = calibFrom.current;
+    setPhase(to);
+    if (to === 'loop' && !startedRef.current) startLoop();
+  };
 
   const startWithOrder = (picks: string[]) => {
     const t = taskRef.current!;
@@ -341,7 +358,10 @@ export function RunScreen(props: {
       runnerRef.current = s;
       mainRef.current = s;
       sideRef.current = queue.current[0]?.side ?? 'top';
-      if (calibDeg === null) setPhase('calibrate');
+      if (calibDeg === null) {
+        calibFrom.current = 'menu'; // back returns to 报菜名 to re-pick
+        setPhase('calibrate');
+      }
       else {
         viewInfoRef.current = { deg: effectiveDeg(calibDeg, screenAngleDeg()), flip: calibFlip };
         setPhase('loop');
@@ -355,6 +375,7 @@ export function RunScreen(props: {
     setCalibFlip(flip);
     sideRef.current = queue.current[runnerRef.current?.pointer ?? 0]?.side ?? sideRef.current;
     void persistCalib(props.taskId, { deg: calibDeg ?? 0, flip, at: Date.now() });
+    calibFrom.current = 'loop'; // face-turn recal: back returns to the loop
     setPhase('calibrate'); // 翻面必须重标 (plan section 7)
   };
 
@@ -435,6 +456,7 @@ export function RunScreen(props: {
         initialDeg={calibDeg ?? 0}
         onLock={lockCal}
         onSkip={skipCal}
+        onBack={calibBack}
       />
     );
   }
@@ -533,8 +555,19 @@ export function RunScreen(props: {
           {unit && <span class="badge">{sideWord(unit.side)}</span>}
           {unit?.side === 'bottom' && <span class="badge">镜像</span>}
           {group?.polarity && <span class="badge warn">⚠极性</span>}
-          <button class="btn-link" data-testid="open-cal" onClick={() => setPhase('calibrate')}>
+          <button class="btn-link" data-testid="open-cal" onClick={() => { calibFrom.current = 'loop'; setPhase('calibrate'); }}>
             标定
+          </button>
+          {/* soak F-UX2: mid-weld exit with confirmation (progress is persisted,
+              resumable from home). Confirm guards against palm taps. */}
+          <button
+            class="btn-link"
+            data-testid="run-exit"
+            onClick={() => {
+              if (window.confirm('退出焊接？进度已自动保存，可从首页继续。')) props.onExit();
+            }}
+          >
+            退出
           </button>
         </span>
       </div>

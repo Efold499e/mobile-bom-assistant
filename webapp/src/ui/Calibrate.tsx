@@ -14,6 +14,9 @@ export function CalibrateScreen(props: {
   initialDeg: number;
   onLock(deg: number): void;
   onSkip(): void;
+  /** soak F-UX1: way back out of calibration (to the menu or the loop,
+   * depending on where this screen was entered from). */
+  onBack?(): void;
 }) {
   const [deg, setDeg] = useState(props.initialDeg);
 
@@ -21,6 +24,11 @@ export function CalibrateScreen(props: {
     <div class="screen cal-screen">
       <div class="topbar">
         <h1>朝向标定</h1>
+        {props.onBack && (
+          <button class="btn btn-small" data-testid="cal-back" onClick={props.onBack}>
+            ← 返回
+          </button>
+        )}
         <button class="btn btn-small" data-testid="cal-skip" onClick={props.onSkip}>
           暂不标定
         </button>

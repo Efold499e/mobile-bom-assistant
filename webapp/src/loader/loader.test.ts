@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { parseStjText } from './index';
+import { friendlyErrors, parseStjText } from './index';
 
 const DEMO_PATH = fileURLToPath(new URL('../../public/demo/demo.stj.json', import.meta.url));
 const demoText = readFileSync(DEMO_PATH, 'utf-8');
@@ -138,5 +138,37 @@ describe('rejects bad STJ (M0 negative scenarios, TS ports)', () => {
     const r = parseStjText('this is not json');
     expect(r.ok).toBe(false);
     expect(r.errors[0].startsWith('E_JSON')).toBe(true);
+  });
+});
+
+describe('friendlyErrors (soak F-UX3: welder-facing guidance per code)', () => {
+  it('E_JSON -> guidance about pasting the full exported file', () => {
+    const out = friendlyErrors(['E_JSON: not valid JSON: Unexpected end of JSON Input']);
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('不是合法的 JSON');
+    expect(out[0]).toContain('bom2task');
+  });
+  it('E_FORMAT -> says it is not a solder-task file', () => {
+    const out = friendlyErrors(["E_FORMAT: expected 'solder-task-json', got undefined (at format)"]);
+    expect(out[0]).toContain('不是焊接任务文件');
+  });
+  it('E_VERSION -> version note', () => {
+    const out = friendlyErrors(['E_VERSION: expected 1, got 2 (at version)']);
+    expect(out[0]).toContain('版本');
+  });
+  it('E_MISSING -> counts the problems', () => {
+    const out = friendlyErrors([
+      "E_MISSING: missing required field 'meta' (at <root>)",
+      "E_MISSING: missing required field 'sides' (at <root>)",
+    ]);
+    expect(out[0]).toContain('共 2 处');
+  });
+  it('other codes -> generic guidance with the count', () => {
+    const out = friendlyErrors(['E_RANGE: x_mm is negative (at placements[0].x_mm)']);
+    expect(out[0]).toContain('共 1 处');
+    expect(out[0]).toContain('range');
+  });
+  it('empty list stays empty', () => {
+    expect(friendlyErrors([])).toEqual([]);
   });
 });

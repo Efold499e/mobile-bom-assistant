@@ -38,7 +38,9 @@ export function HomeScreen(props: { onImport(): void; onSettings(): void; onRun(
           const done = doneCount(t);
           const skipped = skippedCount(t);
           const n = total(t);
-          const started = t.run !== null && !t.run.finishedAt;
+          // `!= null` (not `!== null`): a record stored without a run key
+          // (legacy/foreign shape) must not brick the task list render
+          const started = t.run != null && !t.run.finishedAt;
           return (
             <div class="task-card" key={t.taskId}>
               <div class="row1">

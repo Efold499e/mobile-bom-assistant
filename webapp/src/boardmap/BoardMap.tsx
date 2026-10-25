@@ -527,6 +527,7 @@ export function BoardMap(props: {
       onWheel={onWheel}
       onClick={mode === 'thumb' ? props.onTap : undefined}
       role={mode === 'thumb' ? 'button' : undefined}
+      aria-label={mode === 'thumb' ? '打开全屏点位图' : undefined}
     >
       <canvas class="boardmap-canvas" ref={canvasRef} />
       <div class="map-dot" ref={dotRef}>
