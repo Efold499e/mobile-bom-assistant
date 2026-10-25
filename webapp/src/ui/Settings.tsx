@@ -15,10 +15,13 @@ export function SettingsScreen(props: { onDone(): void }) {
   const [voices, setVoices] = useState<{ name: string; lang: string }[]>([]);
   const [, setVoiceVer] = useState(0);
   const [savedFlash, setSavedFlash] = useState(false);
+  // AI fields commit on blur (keystroke-level saves would flash 已保存 per key)
+  const [aiDraft, setAiDraft] = useState({ base: '', key: '', model: '' });
 
   useEffect(() => {
     void getSettings().then((loaded) => {
       setS(loaded);
+      setAiDraft({ base: loaded.aiBaseUrl ?? '', key: loaded.aiApiKey ?? '', model: loaded.aiModel ?? '' });
       getSpeaker().setRate(loaded.rate);
       getSpeaker().setVoice(loaded.voiceName ?? null);
     });
@@ -146,6 +149,48 @@ export function SettingsScreen(props: { onDone(): void }) {
                   const zh = vs.filter((v) => v.lang.toLowerCase().startsWith('zh'));
                   return zh.length > 0 ? zh[0].name : '无中文语音';
                 })()}
+              </div>
+            </section>
+
+            <section class="settings-card">
+              <h2>AI 排序（可选，需联网）</h2>
+              <div class="ai-field">
+                <label for="ai-base">API 地址</label>
+                <input
+                  id="ai-base"
+                  data-testid="ai-base"
+                  placeholder="https://api.deepseek.com"
+                  value={aiDraft.base}
+                  onInput={(e) => setAiDraft({ ...aiDraft, base: e.currentTarget.value })}
+                  onBlur={() => update({ aiBaseUrl: aiDraft.base.trim().replace(/\/+$/, '') || undefined })}
+                />
+              </div>
+              <div class="ai-field">
+                <label for="ai-key">API Key</label>
+                <input
+                  id="ai-key"
+                  type="password"
+                  data-testid="ai-key"
+                  placeholder="sk-…（只存在本机 IndexedDB）"
+                  value={aiDraft.key}
+                  onInput={(e) => setAiDraft({ ...aiDraft, key: e.currentTarget.value })}
+                  onBlur={() => update({ aiApiKey: aiDraft.key.trim() || undefined })}
+                />
+              </div>
+              <div class="ai-field">
+                <label for="ai-model">模型</label>
+                <input
+                  id="ai-model"
+                  data-testid="ai-model"
+                  placeholder="deepseek-chat"
+                  value={aiDraft.model}
+                  onInput={(e) => setAiDraft({ ...aiDraft, model: e.currentTarget.value })}
+                  onBlur={() => update({ aiModel: aiDraft.model.trim() || undefined })}
+                />
+              </div>
+              <div class="muted settings-note">
+                配好后报菜名屏会出现「AI 排序」：用一句话（如「先焊电阻，IC 放最后」）让
+                AI 排取料序。排序时只把元件组清单（值 / 封装 / 数量）发给所配服务商，不含坐标与丝印；AI 失败时点选排序不受影响。
               </div>
             </section>
 

@@ -13,7 +13,9 @@ const STORE = 'tasks';
 const SETTINGS_STORE = 'settings';
 
 /** App settings (M4): TTS rate 0.7-1.2 (default 0.9), batch threshold
- * (default 4, null = batch off). voiceName pins a TTS voice (M5 feedback). */
+ * (default 4, null = batch off). voiceName pins a TTS voice (M5 feedback).
+ * ai* fields (2026-10-24): optional chat-completions endpoint for the 报菜名
+ * natural-language ordering; absent -> AI ordering button shows a hint. */
 export interface AppSettings {
   rate: number;
   batchThreshold: number | null;
@@ -21,6 +23,11 @@ export interface AppSettings {
   /** M5 feedback: within a group, pieces 2+ announce only 第N颗+位置+极性
    * (default true). false = always the full plan-section-6 template. */
   conciseTts?: boolean;
+  /** AI ordering endpoint base (default https://api.deepseek.com), API key
+   * (stays in this device's IndexedDB) and chat model (default deepseek-chat). */
+  aiBaseUrl?: string;
+  aiApiKey?: string;
+  aiModel?: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = { rate: 0.9, batchThreshold: 4, conciseTts: true };
@@ -36,6 +43,11 @@ export function normalizeSettings(raw: unknown): AppSettings {
   };
   if (typeof o['voiceName'] === 'string' && o['voiceName']) s.voiceName = o['voiceName'];
   s.conciseTts = typeof o['conciseTts'] === 'boolean' ? o['conciseTts'] : DEFAULT_SETTINGS.conciseTts;
+  if (typeof o['aiBaseUrl'] === 'string' && o['aiBaseUrl'].trim()) {
+    s.aiBaseUrl = o['aiBaseUrl'].trim().replace(/\/+$/, '');
+  }
+  if (typeof o['aiApiKey'] === 'string' && o['aiApiKey'].trim()) s.aiApiKey = o['aiApiKey'].trim();
+  if (typeof o['aiModel'] === 'string' && o['aiModel'].trim()) s.aiModel = o['aiModel'].trim();
   return s;
 }
 

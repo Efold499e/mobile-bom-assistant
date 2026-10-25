@@ -103,4 +103,13 @@ describe('settings normalization round-trip', () => {
     const s = normalizeSettings({ rate: 0.8, batchThreshold: 8 });
     expect(normalizeSettings(s)).toEqual(s);
   });
+  it('ai ordering fields: trimmed strings kept, blank/garbage dropped, trailing slash stripped', () => {
+    expect(normalizeSettings({ rate: 0.9, batchThreshold: 4, aiBaseUrl: ' https://api.deepseek.com/ ' }))
+      .toMatchObject({ aiBaseUrl: 'https://api.deepseek.com' });
+    expect(normalizeSettings({ aiApiKey: '  sk-x  ', aiModel: ' deepseek-chat ' }))
+      .toMatchObject({ aiApiKey: 'sk-x', aiModel: 'deepseek-chat' });
+    expect(normalizeSettings({ aiBaseUrl: '   ', aiApiKey: '', aiModel: 42 })).toEqual(DEFAULT_SETTINGS);
+    const s = normalizeSettings({ aiBaseUrl: 'https://api.deepseek.com', aiApiKey: 'k', aiModel: 'm' });
+    expect(normalizeSettings(s)).toEqual(s);
+  });
 });

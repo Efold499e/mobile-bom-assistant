@@ -587,6 +587,77 @@ textarea#paste {
   padding: 4px 2px;
 }
 
+.menu-ai-row {
+  display: flex;
+  gap: 10px;
+  padding: 0 2px;
+}
+
+.menu-ai-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--fg);
+  font-size: 1rem;
+  padding: 12px 14px;
+}
+
+.menu-ai-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.menu-ai-row .btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.menu-ai-status {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.menu-ai-ok {
+  color: var(--accent);
+  background: rgba(245, 166, 35, 0.08);
+  border: 1px solid rgba(245, 166, 35, 0.3);
+}
+
+.menu-ai-err {
+  color: var(--warn);
+  background: rgba(255, 93, 115, 0.08);
+  border: 1px solid rgba(255, 93, 115, 0.3);
+}
+
+.ai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ai-field label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.ai-field input {
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--fg);
+  font-size: 0.95rem;
+  padding: 10px 12px;
+}
+
+.ai-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 /* ---------- settings ---------- */
 
 .topbar-actions {
